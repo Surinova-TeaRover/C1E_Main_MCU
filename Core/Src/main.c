@@ -226,6 +226,7 @@ int Left_Wheels_Torque =0, Left_Wheels_Torque_Temp=0;
 
 float Absolute_Position[20];
 int16_t Absolute_Position_Int[20];
+float Absolute_Position_Float[20];
 
 /* 							FRAME_CONTROLS_VARIABLES 						*/
 float L_Vert_Speed=0, R_Vert_Speed=0, L_Vert_Speed_Temp=0, R_Vert_Speed_Temp=0, Contour_Speed=0, Contour_Speed_Temp=0;
@@ -241,8 +242,7 @@ double dt=0.01 ;
 int Left_Vertical_Error=0;
 int Current_Vel_Limit = 0, Modified_Vel_Limit = 0, Modified_Vel_Limit_Temp =0 , Prev_Mod=0; 
 float Width_Motor_Speed=0, Width_Motor_Temp=0, Lower_Width_Motor_Speed = 0, Upper_Width_Motor_Speed = 0, Lower_Width_Motor_Speed_Temp=0, Upper_Width_Motor_Speed_Temp=0;
-int Lower_Width_Motor_Count=0, Upper_Width_Motor_Count=0, Lower_Width_Motor_Value=0, Upper_Width_Motor_Value=0; // Total Counts
-int Right_Vertical_Motor_Count =0, Contour_Motor_Count =0, Right_Vertical_Motor_Value =0, Contour_Motor_Value =0;;
+
 bool Right_Vertical_On_Limit = 0, Contour_On_Limit=0;
 float L_Roll_Err = 0, Width_Correction_Speed = 0;
 /* 							FRAME_CONTROLS_VARIABLES 						*/
@@ -252,8 +252,14 @@ float L_Roll_Err = 0, Width_Correction_Speed = 0;
 /* 							EEPROM_VARIABLES 						*/
 
 //int16_t Read_Value[28], Write_Value[28], Prev_Write_Value[28],Read_Value_1[28],Max_val=600;
-int16_t Read_Value[25] = {0}, Write_Value[25], Prev_Write_Value[25],Read_Value_1[25],Start_Value,End_Value;
+int8_t Read_Value[25] = {0}, Write_Value[25], Prev_Write_Value[25],Read_Value_1[25],Start_Value,End_Value;
 bool Store_Data = 0;
+
+float Lower_Width_Motor_Count=0, Upper_Width_Motor_Count=0, Lower_Width_Motor_Value=0, Upper_Width_Motor_Value=0; // Total Counts
+float Vertical_Motor_Count =0, Contour_Motor_Count =0, Vertical_Motor_Value =0, Contour_Motor_Value =0;
+float Left_Macro_Motor_Count = 0, Right_Macro_Motor_Count = 0, Left_Macro_Motor_Value = 0, Right_Macro_Motor_Value = 0;
+
+uint8_t eeprom = 0;
 /* 							EEPROM_VARIABLES 						*/
 
 bool Buzz_Switch = 0, Frame_Buzz_Switch=0;
@@ -317,8 +323,22 @@ int16_t Flap_Data_Right[ARRAY_SIZE] = {0}, Flap_Data_Array[ARRAY_SIZE];
 bool LF_Bush_Sensed = 0, LR_Bush_Sensed = 0, RF_Bush_Sensed = 0, RR_Bush_Sensed = 0;
 uint64_t Last_Tick_FL = 0, Last_Tick_RL = 0, Last_Tick_FR = 0, Last_Tick_RR = 0;
 int16_t Front_Angle = 0,  Rear_Angle = 0;
+float Flap_Error_LR = 0, Flap_Target_LR = 0, Flap_Error_RR = 0, Flap_Target_RR = 0, Flap_Error_FAVG = 0, Flap_Target_FAVG =0, Flap_Error_RAVG = 0, Flap_Target_RAVG =0;
 
 /*                                                   FLAP VARIABLES                                            */
+
+////////////////////////////////////////////////////MACRO VARIABLES///////////////////////////////////////////////////
+
+float Left_Macro_Speed = 0, Right_Macro_Speed = 0, Left_Macro_Speed_Temp = 0, Right_Macro_Speed_Temp = 0;
+float Left_Macro_Count = 0, Right_Macro_Count = 0, Macro_Error = 0, Macro_Kp = 1, Correction_Speed = 0;
+uint8_t max_difference = 3;
+
+float M_Error_Change = 0, M_Prev_Error = 0, M_Error_Slope = 0, M_Error_Area = 0;
+float M_P = 0, M_I = 0, M_D = 0, M_Kp = 0, M_Ki = 0, M_Kd = 0;
+float Macro_Out = 0, Macro_Max_Speed = 50;
+/*                                                 MACRO VARIABLES                                                    */
+
+
 int Flap_Max_Angle = 55;
 float Arm_Angle=0,Left_Arm_Pos = 0, Right_Arm_Pos = 0, Pitch_Arm_Pos = 0,Tri_Arm_Pos = 0, Left_Arm_Pos_Temp = 0, Right_Arm_Pos_Temp = 0, Pitch_Arm_Pos_Temp = 0;
 int Flap_Mod_Value = 0, Flap_Mod_Value_Right = 0,Left_Flap=0,Right_Flap=0;
@@ -352,12 +372,19 @@ float Input_Velocity[20];
 uint16_t Half_Track_Width = 0, Half_Wheel_Base = 0;
 
 /////////////////////////////////////////////////////OPERATION MONITOR VARIABLES	////////////////////////////////////////
-uint64_t Heartbeat_Tick = 0, Drive_Error_Tick = 0, Fet_Temp_Tick =0, Overload_Tick = 0, Motor_Tick = 0, speed_time = 0, Joystick_Tick = 0;
-bool Drive_Disconnected = NULL, Sensor_Disconnected = NULL, Drive_Errored = NULL, FET_Temp_Exceeded = NULL, Motor_Overloaded = NULL, E_Stop = NULL, Joystick_Disconnected = NULL;
+uint64_t Heartbeat_Tick = 0, Drive_Error_Tick = 0, Fet_Temp_Tick =0, Overload_Tick = 0, Motor_Tick = 0, speed_time = 0, Joystick_Tick = 0, Vertical_Limit_Tick = 0, Contour_Limit_Tick = 0, Pitch_Limit_Tick = 0;
+bool Drive_Disconnected = NULL, Sensor_Disconnected = NULL, Drive_Errored = NULL, FET_Temp_Exceeded = NULL, Motor_Overloaded = NULL, E_Stop = NULL, Joystick_Disconnected = NULL, Vertical_Limit_Exceeded = NULL, Contour_Limit_Exceeded = NULL, Pitch_Limit_Exceeded = NULL, EEPROM_Error = NULL;
 float FET_Temperature[20];
 uint8_t Speed_Ref = 0;
 
 /*                                                   OPERATION MONITOR VARIABLES	                                      */
+
+
+////////////////////////////////////////////////////PITCH VARIABLES////////////////////////////////////////////////////////////
+
+float Lead_Screw_Length = 0, Vertical_Angle = 0, Pitch_Target_Angle = 0, Shear_Angle = 0, Shear_Pitch_Home_Pos = 0, Pitch_Arm_Error = 0;
+float Shear_Roll_Home_Pos = 0, Pitch_Angle = 0, Contour_Angle = 0;
+/*                                                 PITCH VARIABLES                                                         */
 
 bool message_sent = 0;
 char Tx_Initial_msg[]="1.Battery percentage 2. Error Indication  3.Left vertical 4.Left Contour 5.Right vertical 6.Right contour 7.Pitch Arm 8.FET Temperature",Rx_Data[1];
@@ -432,6 +459,7 @@ void Left_Frame_Controls (void);
  void Start_Continuous_Sending(char command);
  void UART_tx(void);
  void Flap_Sensor_Pos(double Sensor_Value, double Zero_Pos);
+ float Top_Sensing_PID ( float Flap_Value , unsigned long long 	R_Time_Stamp );
  //void Set_Motor_Position (uint8_t Axis, float Position);
 /* USER CODE END PFP */
 
@@ -509,6 +537,7 @@ void Absolute_Position_Reception( uint8_t Node_Id )
 {
   memcpy(&Absolute_Position[Node_Id],RxData2, sizeof(float)); 
 	Absolute_Position_Int[Node_Id] = Absolute_Position[Node_Id]; 
+	Absolute_Position_Float[Node_Id]=roundf(Absolute_Position[Node_Id]*100)/100;
 }
 float CAN_Reception(uint8_t byte_choice)
 {
@@ -754,16 +783,31 @@ int main(void)
 //EEPROM_Write(25,0, (uint8_t *)Test_Write,sizeof(Test_Write));
 //HAL_Delay(2000);
 //EEPROM_Read(25,0, (uint8_t *)Test_Read,sizeof(Test_Read));
-	//Read_EEPROM_Data();	
 								
 	
-//	Left_Arm_Motor_Value  = 0;
-//	Right_Arm_Motor_Value = 0;
-//	Pitch_Arm_Motor_Value = 0;
+
 //Lower_Width_Motor_Value = 0;	
 //Upper_Width_Motor_Value = 0;
-//Right_Vertical_Motor_Value=0;
-//Contour_Motor_Value=0;
+//Vertical_Motor_Value=0;
+//Pitch_Arm_Motor_Value = 0;
+//Left_Macro_Motor_Value = 0;
+//Right_Macro_Motor_Value = 0;
+
+	//Read_EEPROM_Data();	
+
+for (uint8_t i = 1; i < 22; i++)
+{
+	if (Read_Value[i] == 0)
+	{
+		eeprom++;
+	}
+}
+
+if (eeprom == 21)
+{
+	EEPROM_Error = SET;
+	Emergency_Stop();
+}
 
 	BUZZER_OFF;
 	
@@ -1407,9 +1451,12 @@ void Read_EEPROM_Data(void)
 //	EEPROM_Read(6, 0, (uint8_t *)Read_Value_1, sizeof(Read_Value_1));
 //	memcpy(&Lower_Width_Motor_Value, &Read_Value[28],4 );	 				
 //	memcpy(&Upper_Width_Motor_Value, &Read_Value[4],4 );
-	memcpy(&LA, &Read_Value[7],4 );
-	memcpy(&Right_Arm_Motor_Value, &Read_Value[3],4 );
-	memcpy(&Pitch_Arm_Motor_Value, &Read_Value[5],4 );
+	memcpy(&Vertical_Motor_Value, &Read_Value[1],4 );
+	memcpy(&Left_Macro_Motor_Value, &Read_Value[5],4 );
+	memcpy(&Right_Macro_Motor_Value, &Read_Value[9],4 );
+	memcpy(&Pitch_Arm_Motor_Value, &Read_Value[13],4 );
+	memcpy(&Lower_Width_Motor_Value, &Read_Value[17],4 );
+	memcpy(&Upper_Width_Motor_Value, &Read_Value[21],4 );
 //	memcpy(&Right_Vertical_Motor_Value, &Read_Value[20],4 );
 //	memcpy(&Contour_Motor_Value, &Read_Value[24],4 );
 	
@@ -1430,13 +1477,13 @@ void Read_EEPROM_Data(void)
 //	{	memcpy(&Contour_Motor_Value, &Read_Value_1[24],4 );}
 	
 	
-	Lower_Width_Motor_Value 		 = Lower_Width_Motor_Value 			== -1 ? 0 : Lower_Width_Motor_Value;
-	Upper_Width_Motor_Value 		 = Upper_Width_Motor_Value 			== -1 ? 0 : Upper_Width_Motor_Value;
-	Left_Arm_Motor_Value    		 = Left_Arm_Motor_Value    			== -1 ? 0 : Left_Arm_Motor_Value;
-	Right_Arm_Motor_Value  		   = Right_Arm_Motor_Value   			== -1 ? 0 : Right_Arm_Motor_Value;
-	Pitch_Arm_Motor_Value   		 = Pitch_Arm_Motor_Value   			== -1 ? 0 : Pitch_Arm_Motor_Value;
-	Right_Vertical_Motor_Value   = Right_Vertical_Motor_Value   == -1 ? 0 : Right_Vertical_Motor_Value;
-	Contour_Motor_Value   			 = Contour_Motor_Value          == -1 ? 0 : Contour_Motor_Value;
+//	Lower_Width_Motor_Value 		 = Lower_Width_Motor_Value 			== -1 ? 0 : Lower_Width_Motor_Value;
+//	Upper_Width_Motor_Value 		 = Upper_Width_Motor_Value 			== -1 ? 0 : Upper_Width_Motor_Value;
+//	Left_Arm_Motor_Value    		 = Left_Arm_Motor_Value    			== -1 ? 0 : Left_Arm_Motor_Value;
+//	Right_Arm_Motor_Value  		   = Right_Arm_Motor_Value   			== -1 ? 0 : Right_Arm_Motor_Value;
+//	Pitch_Arm_Motor_Value   		 = Pitch_Arm_Motor_Value   			== -1 ? 0 : Pitch_Arm_Motor_Value;
+//	Vertical_Motor_Value   = 		Vertical_Motor_Value   == -1 ? 0 : Right_Vertical_Motor_Value;
+//	Contour_Motor_Value   			 = Contour_Motor_Value          == -1 ? 0 : Contour_Motor_Value;
 
 }
 void Heal_Error(uint8_t Axis_Id)
@@ -1493,7 +1540,7 @@ void Joystick_Reception(void)
 	}
 	else{  E_Stop = NULL; speed_time = HAL_GetTick();	}
 	
-	if (HAL_GetTick() - Joystick_Tick >= 2000)
+	if (HAL_GetTick() - Joystick_Tick >= 1000)
 	{
 			Joystick_Disconnected = Heartbeat == Heartbeat_Temp ? SET : NULL;
 			Heartbeat_Temp = Heartbeat;
@@ -1504,7 +1551,7 @@ void Joystick_Reception(void)
 	else {}
 		
 	Rover_Voltage = 54;
-	if((HAL_GetTick() - Timt_Batt) >= 1000)
+	if((HAL_GetTick() - Timt_Batt) >= 3000)
 	{
 		Tx_Voltage = Rover_Voltage < 44 ? 0 : 1;
 		HAL_UART_Transmit_DMA(&huart5, &Tx_Voltage, sizeof(Tx_Voltage));
@@ -2763,7 +2810,27 @@ void Operations_Monitor(void)
 	}
 	Motor_Tick = HAL_GetTick();
 	
-	OPERATION_MONITOR_FLAG = Drive_Disconnected == SET && Sensor_Disconnected == SET && Drive_Errored == SET && FET_Temp_Exceeded == SET && Motor_Overloaded == SET && E_Stop == SET && Joystick_Disconnected == SET ? SET : NULL;
+	if (HAL_GetTick() - Vertical_Limit_Tick >= 2000)
+	{
+		Vertical_Limit_Exceeded = Vertical_Angle >= 30 && Vertical_Angle <= -30 ? SET : NULL;
+		Vertical_Limit_Tick = HAL_GetTick();
+	}
+	
+	if (HAL_GetTick() - Contour_Limit_Tick >= 2000)
+	{
+		Contour_Angle = Shear_Roll_Home_Pos - Shear_Roll;
+		Contour_Limit_Exceeded = Contour_Angle >= 30 && Contour_Angle <= -30 ? SET : NULL;
+		Contour_Limit_Tick = HAL_GetTick();
+	}
+	
+	if (HAL_GetTick() - Pitch_Limit_Tick >= 2000)
+	{
+		Pitch_Angle = Shear_Pitch_Home_Pos - Shear_Pitch;
+		Pitch_Limit_Exceeded = Pitch_Angle >= 30 && Pitch_Angle <= -30 ? SET : NULL;
+		Pitch_Limit_Tick = HAL_GetTick();
+	}
+	
+	OPERATION_MONITOR_FLAG = Drive_Disconnected == SET && Sensor_Disconnected == SET && Drive_Errored == SET && FET_Temp_Exceeded == SET && Motor_Overloaded == SET && E_Stop == SET && Joystick_Disconnected == SET && Vertical_Limit_Exceeded == SET && Contour_Limit_Exceeded == SET && Pitch_Limit_Exceeded == SET ? SET : NULL;
 }
 
 void Emergency_Stop(void)
@@ -2857,9 +2924,13 @@ void Emergency_Stop(void)
 			}
 		}
 		
+		while (EEPROM_Error == SET)
+		{
+			
+		}
 	}
 	
-	OPERATION_MONITOR_FLAG =  Drive_Disconnected == NULL && Sensor_Disconnected == NULL && Drive_Errored == NULL && FET_Temp_Exceeded == NULL && Motor_Overloaded == NULL && E_Stop == NULL && Joystick_Disconnected == NULL ? NULL : SET;
+	OPERATION_MONITOR_FLAG =  Drive_Disconnected == NULL && Sensor_Disconnected == NULL && Drive_Errored == NULL && FET_Temp_Exceeded == NULL && Motor_Overloaded == NULL && E_Stop == NULL && Joystick_Disconnected == NULL && Vertical_Limit_Exceeded == NULL && Contour_Limit_Exceeded == NULL && Pitch_Limit_Exceeded == NULL ? NULL : SET;
 	if (OPERATION_MONITOR_FLAG == NULL) {BUZZER_OFF;}
 	
 	
@@ -3140,42 +3211,49 @@ float Pitch_Arm_PID ( float Pitch_Error , unsigned long long 	R_Time_Stamp )
 }
 void EEPROM_Store_Data (void)
 {
-//	Lower_Width_Motor_Count = Lower_Width_Motor_Value + Absolute_Position_Int[15];
-//	Upper_Width_Motor_Count = Upper_Width_Motor_Value + Absolute_Position_Int[16];
+	Vertical_Motor_Count = Vertical_Motor_Value + Absolute_Position_Float[6];
+	Left_Macro_Motor_Count = Left_Macro_Motor_Value + Absolute_Position_Float[12];
+	Right_Macro_Motor_Count = Right_Macro_Motor_Value + Absolute_Position_Float[13];
+	Pitch_Arm_Motor_Count = Pitch_Arm_Motor_Value + Absolute_Position_Float[14];
+	Lower_Width_Motor_Count = Lower_Width_Motor_Value + Absolute_Position_Float[15];
+	Upper_Width_Motor_Count = Upper_Width_Motor_Value + Absolute_Position_Float[16];
 //	memcpy(&Write_Value[0], &Start_Value, sizeof(Start_Value));
 //	memcpy(&Write_Value[32], &Start_Value, sizeof(End_Value));
 //	memcpy(&Write_Value[28], &Lower_Width_Motor_Count, sizeof(Lower_Width_Motor_Count));
 //	memcpy(&Write_Value[4], &Upper_Width_Motor_Count, sizeof(Upper_Width_Motor_Count));
 	
-	Left_Arm_Motor_Count  = Left_Arm_Motor_Value + Absolute_Position_Int[12];
-	Right_Arm_Motor_Count = Right_Arm_Motor_Value + Absolute_Position_Int[13];
-	Pitch_Arm_Motor_Count = Pitch_Arm_Motor_Value + Absolute_Position_Int[14];	
+//	Left_Arm_Motor_Count  = Left_Arm_Motor_Value + Absolute_Position_Int[12];
+//	Right_Arm_Motor_Count = Right_Arm_Motor_Value + Absolute_Position_Int[13];
+//	Pitch_Arm_Motor_Count = Pitch_Arm_Motor_Value + Absolute_Position_Int[14];	
 																																																											
-	memcpy(&Write_Value[7], &Left_Arm_Motor_Count, sizeof(Left_Arm_Motor_Count));
-	memcpy(&Write_Value[3], &Right_Arm_Motor_Count, sizeof(Right_Arm_Motor_Count));
-	memcpy(&Write_Value[5], &Pitch_Arm_Motor_Count, sizeof(Pitch_Arm_Motor_Count));
-	
+	memcpy(&Write_Value[1], &Vertical_Motor_Count, sizeof(Vertical_Motor_Count));
+	memcpy(&Write_Value[5], &Left_Macro_Motor_Count, sizeof(Left_Macro_Motor_Count));
+	memcpy(&Write_Value[9], &Right_Macro_Motor_Count, sizeof(Right_Macro_Motor_Count));
+	memcpy(&Write_Value[13], &Pitch_Arm_Motor_Count, sizeof(Pitch_Arm_Motor_Count));
+	memcpy(&Write_Value[17], &Lower_Width_Motor_Count, sizeof(Lower_Width_Motor_Count));
+	memcpy(&Write_Value[21], &Upper_Width_Motor_Count, sizeof(Upper_Width_Motor_Count));
 //	Right_Vertical_Motor_Count = Right_Vertical_Motor_Value + Absolute_Position_Int[6];
 //	Contour_Motor_Count = Contour_Motor_Value + Absolute_Position_Int[7];	
 //	memcpy(&Write_Value[20], &Right_Vertical_Motor_Count, sizeof(Right_Vertical_Motor_Count));
 //	memcpy(&Write_Value[24], &Contour_Motor_Count, sizeof(Contour_Motor_Count));
 	
 //	
-//		for(uint8_t i =3; i < 8; i++)
-//		{
-//			if(Prev_Write_Value[i] != Write_Value[i])
-//			{
-//				Store_Data= 1;
-//				Prev_Write_Value[i] = Write_Value[i];
-//			}
-//			else Store_Data = 0;
-//		}
+		for(uint8_t i = 1; i < 26; i++)
+		{
+			if(Prev_Write_Value[i] != Write_Value[i])
+			{
+				Store_Data= 1;
+				Prev_Write_Value[i] = Write_Value[i];
+			}
+			else Store_Data = 0;
+		}
 		
 		
-//		if ( Store_Data)
-//		{
-//		EEPROM_Write(60, 0, (uint8_t *)Write_Value, sizeof(Write_Value)); //HAL_Delay(10);
-//		EEPROM_Write(6, 0, (uint8_t *)Write_Value, sizeof(Write_Value)); 
+		if ( Store_Data)
+		{
+			EEPROM_Write(60, 0, (uint8_t *)Write_Value, sizeof(Write_Value)); //HAL_Delay(10);
+		}
+		//EEPROM_Write(6, 0, (uint8_t *)Write_Value, sizeof(Write_Value)); 
 		//}
 //		else {}
 //Left_Arm_Current_Pos = Left_Arm_Motor_Count;
@@ -3184,8 +3262,8 @@ void EEPROM_Store_Data (void)
 
 //	L_Arm_Travel = Left_Arm_Motor_Count * 3.32;
 //	R_Arm_Travel = Right_Arm_Motor_Count * 3.32;
-}
 
+	}
 void Frame_Synchronization(void)
 {  
       Left_Vertical_Error =  Left_Pitch_Pos - L_Pitch ; //L_R_Err = x;
@@ -4929,186 +5007,237 @@ void UART_tx(void) {
 
  void All_Macro_Sensing(void){
 	
-//		Array_Element = ARRAY_SIZE - (65 / pow(Speed, 1.025));
-//	
-////	Flap_Angle_Left = Flap_Data_Left[Array_Element];
-//	 Flap_Angle_Left = Flap_Data_Array[Array_Element];
-//	Flap_Angle_Right = Flap_Data_Right[Array_Element];
-//	
-////	LF_Bush_Sensed=(FL_Angle>20)?1:0;
-////	LR_Bush_Sensed=(RL_Angle>20)?1:0;
-////	RF_Bush_Sensed=(FR_Angle>20)?1:0;
-////	RR_Bush_Sensed=(RR_Angle>20)?1:0;
-//	
-////	LF_Bush_Sensed=(FL_LPF_Angle>=10)?1:0;
-////	LR_Bush_Sensed=(RL_LPF_Angle>=10)?1:0;
-////	RF_Bush_Sensed=(FR_LPF_Angle>=10)?1:0;
-////	RR_Bush_Sensed=(RR_LPF_Angle>=10)?1:0;
-//	 
-//	 if (FL_LPF_Angle >= 10) {
-//        if (Last_Tick_FL == 0) { 
-//            Last_Tick_FL = HAL_GetTick();
-//        } else if ((HAL_GetTick() - Last_Tick_FL) >= 1000) {
-//            LF_Bush_Sensed = 1;
-//        }
-//    } else {
-//        Last_Tick_FL = 0;
-//        LF_Bush_Sensed = 0;
-//    }
-//    if (RL_LPF_Angle >= 10) {
-//        if (Last_Tick_RL == 0) { 
-//            Last_Tick_RL = HAL_GetTick();
-//        } else if ((HAL_GetTick() - Last_Tick_RL) >= 1000) {
-//            LR_Bush_Sensed = 1;
-//        }
-//    } else {
-//        Last_Tick_RL = 0;
-//        LR_Bush_Sensed = 0;
-//    }
-//    if (FR_LPF_Angle >= 10) {
-//        if (Last_Tick_FR == 0) { 
-//            Last_Tick_FR = HAL_GetTick();
-//        } else if ((HAL_GetTick() - Last_Tick_FR) >= 1000) {
-//            RF_Bush_Sensed = 1;
-//        }
-//    } else {
-//        Last_Tick_FR = 0;
-//        RF_Bush_Sensed = 0;
-//    }
-//    if (RR_LPF_Angle >= 10) {
-//        if (Last_Tick_RR == 0) { 
-//            Last_Tick_RR = HAL_GetTick();
-//        } else if ((HAL_GetTick() - Last_Tick_RR) >= 1000) {
-//            RR_Bush_Sensed = 1;
-//        }
-//    } else {
-//        Last_Tick_RR = 0;
-//        RR_Bush_Sensed = 0;
-//    }
+		Array_Element = ARRAY_SIZE - (65 / pow(Speed, 1.025));
+	
+//	Flap_Angle_Left = Flap_Data_Left[Array_Element];
+	 Flap_Angle_Left = Flap_Data_Array[Array_Element];
+	Flap_Angle_Right = Flap_Data_Right[Array_Element];
+	
+//	LF_Bush_Sensed=(FL_Angle>20)?1:0;
+//	LR_Bush_Sensed=(RL_Angle>20)?1:0;
+//	RF_Bush_Sensed=(FR_Angle>20)?1:0;
+//	RR_Bush_Sensed=(RR_Angle>20)?1:0;
+	
+//	LF_Bush_Sensed=(FL_LPF_Angle>=10)?1:0;
+//	LR_Bush_Sensed=(RL_LPF_Angle>=10)?1:0;
+//	RF_Bush_Sensed=(FR_LPF_Angle>=10)?1:0;
+//	RR_Bush_Sensed=(RR_LPF_Angle>=10)?1:0;
+	 
+	 if (FL_LPF_Angle >= 10) {
+        if (Last_Tick_FL == 0) { 
+            Last_Tick_FL = HAL_GetTick();
+        } else if ((HAL_GetTick() - Last_Tick_FL) >= 1000) {
+            LF_Bush_Sensed = 1;
+        }
+    } else {
+        Last_Tick_FL = 0;
+        LF_Bush_Sensed = 0;
+    }
+    if (RL_LPF_Angle >= 10) {
+        if (Last_Tick_RL == 0) { 
+            Last_Tick_RL = HAL_GetTick();
+        } else if ((HAL_GetTick() - Last_Tick_RL) >= 1000) {
+            LR_Bush_Sensed = 1;
+        }
+    } else {
+        Last_Tick_RL = 0;
+        LR_Bush_Sensed = 0;
+    }
+    if (FR_LPF_Angle >= 10) {
+        if (Last_Tick_FR == 0) { 
+            Last_Tick_FR = HAL_GetTick();
+        } else if ((HAL_GetTick() - Last_Tick_FR) >= 1000) {
+            RF_Bush_Sensed = 1;
+        }
+    } else {
+        Last_Tick_FR = 0;
+        RF_Bush_Sensed = 0;
+    }
+    if (RR_LPF_Angle >= 10) {
+        if (Last_Tick_RR == 0) { 
+            Last_Tick_RR = HAL_GetTick();
+        } else if ((HAL_GetTick() - Last_Tick_RR) >= 1000) {
+            RR_Bush_Sensed = 1;
+        }
+    } else {
+        Last_Tick_RR = 0;
+        RR_Bush_Sensed = 0;
+    }
 
-//	
-////	Front_Angle=(FL_Angle+FR_Angle)/2;
-////	Rear_Angle=(RL_Angle + RR_Angle)/2;
-//	
-//	Front_Angle=(FL_LPF_Angle + FR_LPF_Angle)/2;
-//	Rear_Angle=(RL_LPF_Angle + RR_LPF_Angle)/2;
-//	
-//	if(Mode ==1)
-//{
-// if (Joystick_Temp != Joystick)
-//        {
-//            switch (Joystick)
-//            {
-//                case 0: Macro_Speed = 0;   break;
-//                case 1: Macro_Speed = -20;  break;
-//                case 2: Macro_Speed = 20; break;
-//                default: Macro_Speed = 0;  break;
-//            }
-//            Joystick_Temp = Joystick;
-//        }
-//				
-//}
-//	else if(Mode==3){
-//	if( !LR_Bush_Sensed && LF_Bush_Sensed && !RF_Bush_Sensed && !RR_Bush_Sensed)
-//		{	
-////		Macro_Speed=Top_Sensing_PID(FL_Angle,NULL);
-////		Macro_Speed=(FL_Angle>=35 && FL_Angle<=45)?0:(FL_Angle<35)?-Macro_Speed:(FL_Angle>45)?Macro_Speed:0;
-//		
-//			Flap_Error_Left = Flaps_Target_Left - FL_LPF_Angle ;
-//			Macro_Speed=-Top_Sensing_PID(Flap_Error_Left,NULL);
-//			
-//	}
-//	else if(!LR_Bush_Sensed && !LF_Bush_Sensed && RF_Bush_Sensed && !RR_Bush_Sensed)
-//		{
-//			
-////		Macro_Speed=Top_Sensing_PID(FR_Angle,NULL);
-////		Macro_Speed=(FR_Angle>=35 && FR_Angle<=45)?0:(FR_Angle<35)?-Macro_Speed:(FR_Angle>45)?Macro_Speed:0;
-//	
-//	    Flap_Error_Right = Flaps_Target_Right - FR_LPF_Angle ;
-//			Macro_Speed=-Top_Sensing_PID(Flap_Error_Right,NULL);
+	
+//	Front_Angle=(FL_Angle+FR_Angle)/2;
+//	Rear_Angle=(RL_Angle + RR_Angle)/2;
+	
+	Front_Angle=(FL_LPF_Angle + FR_LPF_Angle)/2;
+	Rear_Angle=(RL_LPF_Angle + RR_LPF_Angle)/2;
+	
+	if(Mode ==1)
+{
+ if (Joystick_Temp != Joystick)
+        {
+            switch (Joystick)
+            {
+                case 0: Macro_Speed = 0;   break;
+                case 1: Macro_Speed = -20;  break;
+                case 2: Macro_Speed = 20; break;
+                default: Macro_Speed = 0;  break;
+            }
+            Joystick_Temp = Joystick;
+        }
+				
+}
+	else if(Mode==3){
+	if( !LR_Bush_Sensed && LF_Bush_Sensed && !RF_Bush_Sensed && !RR_Bush_Sensed)
+		{	
+//		Macro_Speed=Top_Sensing_PID(FL_Angle,NULL);
+//		Macro_Speed=(FL_Angle>=35 && FL_Angle<=45)?0:(FL_Angle<35)?-Macro_Speed:(FL_Angle>45)?Macro_Speed:0;
+		
+			Flap_Error_Left = Flaps_Target_Left - FL_LPF_Angle ;
+			Macro_Speed=-Top_Sensing_PID(Flap_Error_Left,NULL);
+			
+	}
+	else if(!LR_Bush_Sensed && !LF_Bush_Sensed && RF_Bush_Sensed && !RR_Bush_Sensed)
+		{
+			
+//		Macro_Speed=Top_Sensing_PID(FR_Angle,NULL);
+//		Macro_Speed=(FR_Angle>=35 && FR_Angle<=45)?0:(FR_Angle<35)?-Macro_Speed:(FR_Angle>45)?Macro_Speed:0;
+	
+	    Flap_Error_Right = Flaps_Target_Right - FR_LPF_Angle ;
+			Macro_Speed=-Top_Sensing_PID(Flap_Error_Right,NULL);
 
-//	}
-//	else if(LR_Bush_Sensed && !RR_Bush_Sensed ){
-////		  Macro_Speed=Top_Sensing_PID(RL_Angle,NULL);
-////			Macro_Speed=(RL_Angle>=35 && RL_Angle<=45)?0:(RL_Angle<35)?-Macro_Speed:(RL_Angle>45)?Macro_Speed:0;	
-//		
-//		Flap_Error_LR=Flap_Target_LR-RL_LPF_Angle;
-//		Macro_Speed=-Top_Sensing_PID(Flap_Error_LR,NULL);
+	}
+	else if(LR_Bush_Sensed && !RR_Bush_Sensed ){
+//		  Macro_Speed=Top_Sensing_PID(RL_Angle,NULL);
+//			Macro_Speed=(RL_Angle>=35 && RL_Angle<=45)?0:(RL_Angle<35)?-Macro_Speed:(RL_Angle>45)?Macro_Speed:0;	
+		
+		Flap_Error_LR=Flap_Target_LR-RL_LPF_Angle;
+		Macro_Speed=-Top_Sensing_PID(Flap_Error_LR,NULL);
 
-//	}	
-//	else if(!LR_Bush_Sensed && RR_Bush_Sensed){
-////		Macro_Speed=Top_Sensing_PID(RR_Angle,NULL);
-////		Macro_Speed=(RR_Angle>=35 && RR_Angle<=45)?0:(RR_Angle<35)?-Macro_Speed:(RR_Angle>45)?Macro_Speed:0;
+	}	
+	else if(!LR_Bush_Sensed && RR_Bush_Sensed){
+//		Macro_Speed=Top_Sensing_PID(RR_Angle,NULL);
+//		Macro_Speed=(RR_Angle>=35 && RR_Angle<=45)?0:(RR_Angle<35)?-Macro_Speed:(RR_Angle>45)?Macro_Speed:0;
 
-//	  	Flap_Error_RR=Flap_Target_RR-RR_LPF_Angle;
-//			Macro_Speed=-Top_Sensing_PID(Flap_Error_RR,NULL);
+	  	Flap_Error_RR=Flap_Target_RR-RR_LPF_Angle;
+			Macro_Speed=-Top_Sensing_PID(Flap_Error_RR,NULL);
 
-//	}
-//	else if(!LR_Bush_Sensed && LF_Bush_Sensed && RF_Bush_Sensed && !RR_Bush_Sensed){
-//		
-//		Flap_Error_FAVG=Flap_Target_FAVG-Front_Angle;
-//		Macro_Speed=-Top_Sensing_PID(Flap_Error_FAVG,NULL);
-//		
-//	}
-//	else if( LR_Bush_Sensed && RR_Bush_Sensed){
-//		
-//		Flap_Error_RAVG=Flap_Target_RAVG-Rear_Angle;
-//			Macro_Speed=-Top_Sensing_PID(Flap_Error_RAVG,NULL);
-//		
-//	}
-//		else {
-//			 Macro_Speed=0;
-//		}
-//	}
-//	else if(Mode==2) 	{ Macro_Speed=0;	}
-//else{Macro_Speed=0;}
-//	
-//Left_Macro_Speed = Right_Macro_Speed = Macro_Speed;
-//				
-//				Left_Macro_Speed = Left_Macro_Speed > 0 && Left_Macro_Count >= 280 ? 5 : Left_Macro_Speed < 0 && Left_Macro_Count <= 20 ? -5 : Left_Macro_Speed;
-//				Right_Macro_Speed = Right_Macro_Speed > 0 && Right_Macro_Count  >= 280 ? 5 : Right_Macro_Speed < 0 && Right_Macro_Count <= 20 ? -5 : Right_Macro_Speed;
-//				
-//				Left_Macro_Speed = Left_Macro_Speed > 0 && Left_Macro_Count >= 300 ? 0 : Left_Macro_Speed < 0 && Left_Macro_Count <= 0 ? 0 : Left_Macro_Speed;
-//				Right_Macro_Speed = Right_Macro_Speed > 0 && Right_Macro_Count  >= 300 ? 0 : Right_Macro_Speed < 0 && Right_Macro_Count <= 0 ? 0 : Right_Macro_Speed;
-//	
-//	  if (fabs(Right_Macro_Count - Left_Macro_Count) > max_difference)
-//        {
-//            if (fabs(Right_Macro_Count - Left_Macro_Count) > 5)
-//            {
-//							if(Mode==1){
-//							 Left_Macro_Speed = Joystick != 0 ? 0 : Left_Macro_Speed;
-//                Right_Macro_Speed = Joystick != 0 ? 0 : Right_Macro_Speed;}
-//							
-//							else if(Mode==3){
-//                Left_Macro_Speed = Macro_Speed != 0 ? 0 : Left_Macro_Speed;
-//                Right_Macro_Speed = Macro_Speed != 0 ? 0 : Right_Macro_Speed;}
-//							
-//								else {}
-//									
-//            }
-//            Macro_Error = Right_Macro_Count - Left_Macro_Count; 
-//            Correction_Speed = Macro_Error * Macro_Kp;
-//            Correction_Speed = Correction_Speed < 2 && Correction_Speed > -2 ? 0 : Correction_Speed;
-//            Correction_Speed = Correction_Speed > 10 ? 10 : Correction_Speed < -10 ? -10 : Correction_Speed;
-//        }
-//        else 
-//        {
-//            Correction_Speed = 0;
-//        }
-//        Left_Macro_Speed = Left_Macro_Speed + Correction_Speed;
-//	
-//if (Left_Macro_Speed_Temp != Left_Macro_Speed)
-//    {
-//        Set_Motor_Velocity(12, Left_Macro_Speed);
-//        Left_Macro_Speed_Temp = Left_Macro_Speed;
-//    }
-//if (Right_Macro_Speed_Temp != Right_Macro_Speed)
-//    {
-//       Set_Motor_Velocity(13, Right_Macro_Speed);
-//        Right_Macro_Speed_Temp = Right_Macro_Speed;
-//    }
+	}
+	else if(!LR_Bush_Sensed && LF_Bush_Sensed && RF_Bush_Sensed && !RR_Bush_Sensed){
+		
+		Flap_Error_FAVG=Flap_Target_FAVG-Front_Angle;
+		Macro_Speed=-Top_Sensing_PID(Flap_Error_FAVG,NULL);
+		
+	}
+	else if( LR_Bush_Sensed && RR_Bush_Sensed){
+		
+		Flap_Error_RAVG=Flap_Target_RAVG-Rear_Angle;
+			Macro_Speed=-Top_Sensing_PID(Flap_Error_RAVG,NULL);
+		
+	}
+		else {
+			 Macro_Speed=0;
+		}
+	}
+	else if(Mode==2) 	{ Macro_Speed=0;	}
+else{Macro_Speed=0;}
+	
+Left_Macro_Speed = Right_Macro_Speed = Macro_Speed;
+				
+				Left_Macro_Speed = Left_Macro_Speed > 0 && Left_Macro_Count >= 280 ? 5 : Left_Macro_Speed < 0 && Left_Macro_Count <= 20 ? -5 : Left_Macro_Speed;
+				Right_Macro_Speed = Right_Macro_Speed > 0 && Right_Macro_Count  >= 280 ? 5 : Right_Macro_Speed < 0 && Right_Macro_Count <= 20 ? -5 : Right_Macro_Speed;
+				
+				Left_Macro_Speed = Left_Macro_Speed > 0 && Left_Macro_Count >= 300 ? 0 : Left_Macro_Speed < 0 && Left_Macro_Count <= 0 ? 0 : Left_Macro_Speed;
+				Right_Macro_Speed = Right_Macro_Speed > 0 && Right_Macro_Count  >= 300 ? 0 : Right_Macro_Speed < 0 && Right_Macro_Count <= 0 ? 0 : Right_Macro_Speed;
+	
+	  if (fabs(Right_Macro_Count - Left_Macro_Count) > max_difference)
+        {
+            if (fabs(Right_Macro_Count - Left_Macro_Count) > 5)
+            {
+							if(Mode==1){
+							 Left_Macro_Speed = Joystick != 0 ? 0 : Left_Macro_Speed;
+                Right_Macro_Speed = Joystick != 0 ? 0 : Right_Macro_Speed;}
+							
+							else if(Mode==3){
+                Left_Macro_Speed = Macro_Speed != 0 ? 0 : Left_Macro_Speed;
+                Right_Macro_Speed = Macro_Speed != 0 ? 0 : Right_Macro_Speed;}
+							
+								else {}
+									
+            }
+            Macro_Error = Right_Macro_Count - Left_Macro_Count; 
+            Correction_Speed = Macro_Error * Macro_Kp;
+            Correction_Speed = Correction_Speed < 2 && Correction_Speed > -2 ? 0 : Correction_Speed;
+            Correction_Speed = Correction_Speed > 10 ? 10 : Correction_Speed < -10 ? -10 : Correction_Speed;
+        }
+        else 
+        {
+            Correction_Speed = 0;
+        }
+        Left_Macro_Speed = Left_Macro_Speed + Correction_Speed;
+	
+if (Left_Macro_Speed_Temp != Left_Macro_Speed)
+    {
+				Input_Velocity[12] = Left_Macro_Speed;
+        Set_Motor_Velocity(12, Left_Macro_Speed);
+        Left_Macro_Speed_Temp = Left_Macro_Speed;
+    }
+if (Right_Macro_Speed_Temp != Right_Macro_Speed)
+    {
+				Input_Velocity[13] = Right_Macro_Speed;
+				Set_Motor_Velocity(13, Right_Macro_Speed);
+				Right_Macro_Speed_Temp = Right_Macro_Speed;
+    }
 
 }
+ 
+float Top_Sensing_PID ( float Flap_Value , unsigned long long 	R_Time_Stamp )
+{
+		//dt = Time_Stamp - time;
+
+			M_Error_Change = Flap_Value - M_Prev_Error;
+			M_Error_Slope  = M_Error_Change / dt;
+			M_Error_Area   = M_Error_Area + ( M_Error_Change * dt ) ;			
+				
+			M_P = M_Kp * Flap_Value;
+			 
+			M_I	= M_Ki * M_Error_Area;						 M_I = M_I > Anti_Windup_Limit ? Anti_Windup_Limit : M_I < -Anti_Windup_Limit ? -Anti_Windup_Limit : M_I ;	
+
+			M_D = M_Kd * M_Error_Slope; 
+				
+			
+			Macro_Out = M_P + M_I + M_D ;
+
+			Macro_Out = Macro_Out > Macro_Max_Speed ? Macro_Max_Speed : Macro_Out < -Macro_Max_Speed ? -Macro_Max_Speed : Macro_Out;
+	    Macro_Out = (Macro_Out >-5 && Macro_Out<5)?0:Macro_Out;
+	
+			M_Prev_Error = Flap_Value;
+			
+			return Macro_Out;
+
+}
+
+void Pitch_Control(void)
+{
+	Lead_Screw_Length = Vertical_Motor_Count * 0.5;        //to be included in EEPROM function
+	Vertical_Angle = Lead_Screw_Length * 0.222;            // to be included in EEPROM function
+	
+	Pitch_Target_Angle = Vertical_Angle;
+	Shear_Angle = Shear_Pitch_Home_Pos - Shear_Pitch;
+	
+	Pitch_Arm_Error = Pitch_Target_Angle - Shear_Angle;
+	Pitch_Arm_Error = Pitch_Arm_Error <= 0.5 && Pitch_Arm_Error >= -0.5	? 0 : Pitch_Arm_Error;
+	Pitch_Arm_Speed = Pitch_Arm_PID ( Pitch_Arm_Error , NULL);
+	
+	if (Pitch_Arm_Speed != Pitch_Arm_Speed_Temp)
+	{
+		Input_Velocity[14] = Pitch_Arm_Speed;
+		Set_Motor_Velocity(14, Pitch_Arm_Speed);
+		Pitch_Arm_Speed_Temp = Pitch_Arm_Speed;
+	}
+	
+}
+
+
 /* USER CODE END 4 */
 
 /**
