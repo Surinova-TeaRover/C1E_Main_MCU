@@ -274,13 +274,13 @@ float Manual_Vel_Limit_Temp_1=20,Manual_Vel_Limit_Temp_2=20,Manual_Vel_Limit_Tem
 float Left_Vel_Limit = 0, Right_Vel_Limit=0, Prev_Left_Vel_Limit = 15, Prev_Right_Vel_Limit = 15, Left_Transmit_Vel=0, Right_Transmit_Vel=0, Left_Vel_Limit_Temp = 0, Right_Vel_Limit_Temp = 0, Left_Transmit_Vel_Temp = 0, Right_Transmit_Vel_Temp = 0;
 float New_Left_Vel_Limit = 0, New_Right_Vel_Limit = 0, Accel_Factor = 0;
 int  Frame_Vel_Limit = 0, Left_Steering_Vel_Limit = 0, Right_Steering_Vel_Limit=0;
-
+float Accel_Sync = 0, Left_Vel=0, Left_Diff=0, Left_Vel_Temp = 0;
 int Steering_Angle =0;
 double Rover_Centre_Dist=0, TimeTaken=0, Inner_Speed=0, Outer_Speed=0;
 int WheelBase=900/2, TrackWidth=1800/2;  //1300/2
 double kmph = 1;
 int Left_Steering_Speed=0, Right_Steering_Speed=0, Left_Frame_Speed =0;
-
+float Current_Rover_Velocity = 0, Avg_Steering_Angle = 0;
 //int16_t Flap_Data[ARRAY_SIZE] = {0};
 //int Flap_Angle = 0, Flap_Count=0;
 //float Arm_Angle=0,Left_Arm_Pos = 0, Right_Arm_Pos = 0, Pitch_Arm_Pos = 0,Tri_Arm_Pos = 0, Left_Arm_Pos_Temp = 0, Right_Arm_Pos_Temp = 0, Pitch_Arm_Pos_Temp = 0;
@@ -2433,20 +2433,51 @@ void Transmit_Motor_Torque (void)
 //		Joystick = 0 ;
 //	}
 }
+//void Wheel_Speeds_Calc(int Inner_Angle)
+//{
+
+//	
+//		kmph = Vel_Limit / 30;
+//    Steering_Angle = fabs((float)Inner_Angle); // new float
+//    Rover_Centre_Dist = ((WheelBase/sin(Steering_Angle*(3.14/180)))+TrackWidth)/1000;
+//    TimeTaken =  Rover_Centre_Dist/(kmph*0.277);
+//    Inner_Speed = ((Rover_Centre_Dist- 0.65)/TimeTaken)*3.6;
+//    Inner_Speed = KMPHtoRPS(Inner_Speed) -  Vel_Limit;
+//    
+//    Outer_Speed = ((Rover_Centre_Dist+ 0.65)/TimeTaken)*3.6;
+//    Outer_Speed = KMPHtoRPS(Outer_Speed) - Vel_Limit;
+//   
+//    if ( Inner_Angle <= -3 )
+//    {
+//        Left_Steering_Speed = Inner_Speed;
+//        Right_Steering_Speed = Outer_Speed;
+//    }
+//    else if ( Inner_Angle > 2 ) // Right Turn of the Rover
+//		{
+//				Left_Steering_Speed = Outer_Speed;
+//				Right_Steering_Speed = Inner_Speed;
+//		}
+//		else
+//		{
+//				Left_Steering_Speed = Right_Steering_Speed = NULL;		
+//		}
+
+//}
+
 void Wheel_Speeds_Calc(int Inner_Angle)
 {
 
-	
-		kmph = Vel_Limit / 30;
+		Current_Rover_Velocity = roundf (Rover_Velocity);
+		kmph = Current_Rover_Velocity / 30;
     Steering_Angle = fabs((float)Inner_Angle); // new float
     Rover_Centre_Dist = ((WheelBase/sin(Steering_Angle*(3.14/180)))+TrackWidth)/1000;
     TimeTaken =  Rover_Centre_Dist/(kmph*0.277);
-    Inner_Speed = ((Rover_Centre_Dist- 0.65)/TimeTaken)*3.6;
-    Inner_Speed = KMPHtoRPS(Inner_Speed) -  Vel_Limit;
+    Inner_Speed = ((Rover_Centre_Dist- 0.9)/TimeTaken)*3.6;
+    Inner_Speed = KMPHtoRPS(Inner_Speed) -  Current_Rover_Velocity;
     
-    Outer_Speed = ((Rover_Centre_Dist+ 0.65)/TimeTaken)*3.6;
-    Outer_Speed = KMPHtoRPS(Outer_Speed) - Vel_Limit;
-   
+//    Outer_Speed = ((Rover_Centre_Dist+ 0.9)/TimeTaken)*3.6;
+//    Outer_Speed = KMPHtoRPS(Outer_Speed) - Vel_Limit;
+		
     if ( Inner_Angle <= -3 )
     {
         Left_Steering_Speed = Inner_Speed;
@@ -2463,7 +2494,6 @@ void Wheel_Speeds_Calc(int Inner_Angle)
 		}
 
 }
-
 float Differintial_Angle ( double Inner_Angle_Set )
 {
 	double TAN=0;float theta=0;
@@ -4105,22 +4135,29 @@ void Drive_Wheel_Controls_Vel_Based(void)
 		Left_Vel_Limit = Vel_Limit + Left_Steering_Speed;  
 		Right_Vel_Limit = Vel_Limit + Right_Steering_Speed;
 
-
+		
 	if (Steering_Mode < 4)
 	{
 	if(Left_Vel_Limit != Left_Transmit_Vel)
-			{
+		{
+				Accel_Sync = fabs(New_Right_Vel_Limit - Right_Transmit_Vel);
+				Accel_Sync = Accel_Sync == 0 ? 1 : Accel_Sync;
+				Left_Diff = fabs ((New_Left_Vel_Limit - Left_Transmit_Vel) / Accel_Sync ) ; 
+				Left_Diff = Left_Diff > -100 && Left_Diff < 100 ? Left_Diff : 0;
+				
+				
 				if(HAL_GetTick() - left_tick_count >= 50)
 				{
 					if(Left_Vel_Limit > Left_Transmit_Vel)
 					{
-						Left_Transmit_Vel++;
+//						Left_Transmit_Vel++;
+							Left_Transmit_Vel = Left_Transmit_Vel + Left_Diff;
 					}
 					
 					else if(Left_Vel_Limit < Left_Transmit_Vel)
 					{
-						Left_Transmit_Vel--;
-						
+						//Left_Transmit_Vel--;
+						Left_Transmit_Vel = Left_Transmit_Vel - Left_Diff;
 //						if ( fabs(Motor_Velocity[3]) <= 20 ) Left_Transmit_Vel--;
 //						else if ( fabs(Motor_Velocity[3]) > 20 && fabs(Motor_Velocity[3]) <= 30 ) Left_Transmit_Vel = Left_Transmit_Vel - 3 ;
 //						else Left_Transmit_Vel = Left_Transmit_Vel - 5;
@@ -4597,6 +4634,7 @@ void New_Steering_Controls (void)
 								RR_Speed = RR_Error * STEERING_KP;
 							
 								Prev_Inner_Angle = Inner_Angle;
+								Avg_Steering_Angle = (LF_Steering + LR_Steering) / 2;
 							}
 
 							else if ( Inner_Angle >= 0 ) // Right Turn of the Rover   //0
@@ -4628,6 +4666,8 @@ void New_Steering_Controls (void)
 								
 									
 								Prev_Inner_Angle = Inner_Angle;
+								
+								Avg_Steering_Angle = (RF_Steering + RR_Steering) / 2;
 							}	
 							
 							else // Home Pos of the Rover
@@ -4638,7 +4678,7 @@ void New_Steering_Controls (void)
 								LF_Error = LR_Error = RF_Error = RR_Error = 1;
 							}
 					
-							Wheel_Speeds_Calc(Inner_Angle);
+							Wheel_Speeds_Calc(Avg_Steering_Angle);
 							break;
 			/*///////////////////////////////////////////////////////////////////////////////////	ALL WHEEL STEERING  - STEERING FUNCTION ///////////////////////////////////////////////////////////////////////////////	*/				
 			case CRAB :							//	--> CRAB STEERING			
@@ -4740,6 +4780,7 @@ void New_Steering_Controls (void)
 				LF_Speed= LF_Speed > STEERING_MAX_VEL ? STEERING_MAX_VEL : LF_Speed < -STEERING_MAX_VEL ? -STEERING_MAX_VEL : LF_Speed; 
 				for (uint8_t i = 0; i < 5; i++)
 				{
+					Input_Velocity[8] = -LF_Speed;
 					Set_Motor_Velocity( LFS , -LF_Speed );
 				}
 				LF_Speed_Temp = LF_Speed ;
@@ -4750,6 +4791,7 @@ void New_Steering_Controls (void)
 				LR_Speed= LR_Speed > STEERING_MAX_VEL ? STEERING_MAX_VEL : LR_Speed < -STEERING_MAX_VEL ? -STEERING_MAX_VEL : LR_Speed;
 				for(uint8_t i = 0; i < 2; i++)
 				{
+					Input_Velocity[9] = -LR_Speed;
 				 Set_Motor_Velocity( LRS , -LR_Speed );
 					
 				}
@@ -4761,6 +4803,7 @@ void New_Steering_Controls (void)
 				RF_Speed= RF_Speed > STEERING_MAX_VEL ? STEERING_MAX_VEL : RF_Speed < -STEERING_MAX_VEL ? -STEERING_MAX_VEL : RF_Speed;
 				for (uint8_t i =0; i< 5; i++)
 				{
+					Input_Velocity[10] = -RF_Speed;
 					Set_Motor_Velocity( RFS , -RF_Speed );
 				}
 				RF_Speed_Temp = RF_Speed ;
@@ -4771,6 +4814,7 @@ void New_Steering_Controls (void)
 				RR_Speed= RR_Speed > STEERING_MAX_VEL ? STEERING_MAX_VEL : RR_Speed < -STEERING_MAX_VEL ? -STEERING_MAX_VEL : RR_Speed;
 				for (uint8_t i = 0; i < 5; i++)
 				{
+					Input_Velocity[11] = -RR_Speed;
 					Set_Motor_Velocity( RRS , -RR_Speed );
 				}
 				RR_Speed_Temp = RR_Speed ;
