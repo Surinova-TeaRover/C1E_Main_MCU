@@ -345,7 +345,7 @@ int Flap_Mod_Value = 0, Flap_Mod_Value_Right = 0,Left_Flap=0,Right_Flap=0;
 bool Front_Bush = 1;
 uint8_t Array_Element,Arm_Max_Speed=40;
 int Left_Arm_Current_Pos,Right_Arm_Current_Pos,Pitch_Arm_Current_Pos;
-float Shear_Height_Diff =0, L_Arm_Travel = 0, R_Arm_Travel = 0, Shear_Roll_Angle = 0, Pitch_Compensation_mm = 0, Pitch_Target = 0, Pitch_Error = 0;
+float Shear_Height_Diff =0, L_Arm_Travel = 0, R_Arm_Travel = 0, Shear_Roll_Angle = 0, Pitch_Compensation_mm = 0, Pitch_Target = 0;
 
 float  P_Error_Change=0, P_Error_Slope=0, P_Error_Area=0, P_Prev_Error=0, Pitch_Out =0;
 
@@ -372,10 +372,11 @@ float Input_Velocity[20];
 uint16_t Half_Track_Width = 0, Half_Wheel_Base = 0;
 
 /////////////////////////////////////////////////////OPERATION MONITOR VARIABLES	////////////////////////////////////////
-uint64_t Heartbeat_Tick = 0, Drive_Error_Tick = 0, Fet_Temp_Tick =0, Overload_Tick = 0, Motor_Tick = 0, speed_time = 0, Joystick_Tick = 0, Vertical_Limit_Tick = 0, Contour_Limit_Tick = 0, Pitch_Limit_Tick = 0;
-bool Drive_Disconnected = NULL, Sensor_Disconnected = NULL, Drive_Errored = NULL, FET_Temp_Exceeded = NULL, Motor_Overloaded = NULL, E_Stop = NULL, Joystick_Disconnected = NULL, Vertical_Limit_Exceeded = NULL, Contour_Limit_Exceeded = NULL, Pitch_Limit_Exceeded = NULL, EEPROM_Error = NULL;
+uint64_t Heartbeat_Tick = 0, Drive_Error_Tick = 0, Fet_Temp_Tick =0, Overload_Tick = 0, Motor_Tick = 0, speed_time = 0, Joystick_Tick = 0, Vertical_Limit_Tick = 0, Contour_Limit_Tick = 0, Pitch_Limit_Tick = 0, Vertical_Tick = 0, Vert_Resp_Tick = 0, Contour_Tick = 0, Cont_Resp_Tick = 0, Pitch_Tick = 0, Pitch_Resp_Tick = 0;
+bool Drive_Disconnected = NULL, Sensor_Disconnected = NULL, Drive_Errored = NULL, FET_Temp_Exceeded = NULL, Motor_Overloaded = NULL, E_Stop = NULL, Joystick_Disconnected = NULL, Vertical_Limit_Exceeded = NULL, Contour_Limit_Exceeded = NULL, Pitch_Limit_Exceeded = NULL, EEPROM_Error = NULL, Vertical_Not_Responding = NULL, Contour_Not_Responding = NULL, Pitch_Not_Responding = NULL;
 float FET_Temperature[20];
 uint8_t Speed_Ref = 0;
+float Vertical_Error = 0, Contour_Error = 0, Pitch_Error = 0;
 
 /*                                                   OPERATION MONITOR VARIABLES	                                      */
 
@@ -628,13 +629,13 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan2)
 	{
 		case (IMU_SHEAR) : Shear_Roll = ((int16_t)(RxData2[1]<<8 | RxData2[0]))/16.0;	Shear_Pitch = ((int16_t)(RxData2[3]<<8 | RxData2[2]))/16.0;    Node_Id[27]++; break;
 		
-//		case (FL_FLAP) : 	FL_Raw = CAN_SPI_READ(RxData2);      FL_Angle = Flap_Sensor_Pos (FL_Raw, FL_Home_Pos);				Node_Id[28]++; break;
-//		
-//		case (FR_FLAP) : 	FR_Raw = CAN_SPI_READ(RxData2);      FR_Angle = Flap_Sensor_Pos (FR_Raw, FR_Home_Pos);				Node_Id[29]++; break;
-//		
-//		case (RL_FLAP) : 	RL_Raw = CAN_SPI_READ(RxData2);      RL_Angle = Flap_Sensor_Pos (RL_Raw, RL_Home_Pos);				Node_Id[30]++; break;
-//		
-//		case (RR_FLAP) :  RR_Raw = CAN_SPI_READ(RxData2);      RR_Angle = Flap_Sensor_Pos (RR_Raw, RR_Home_Pos);				Node_Id[31]++; break;
+		case (FL_FLAP) : 	FL_Raw = CAN_SPI_READ(RxData2);      FL_Angle = New_Sensor_Pos (FL_Raw, FL_Home_Pos); 	Update_Array(Flap_Data_Array, ARRAY_SIZE, FL_Angle);				Node_Id[28]++; break;
+		
+		case (FR_FLAP) : 	FR_Raw = CAN_SPI_READ(RxData2);      FR_Angle = New_Sensor_Pos (FR_Raw, FR_Home_Pos);		Update_Array(Flap_Data_Right, ARRAY_SIZE, FR_Angle);     	Node_Id[29]++; break;
+		
+		case (RL_FLAP) : 	RL_Raw = CAN_SPI_READ(RxData2);      RL_Angle = New_Sensor_Pos (RL_Raw, RL_Home_Pos);				Node_Id[30]++; break;
+		
+		case (RR_FLAP) :  RR_Raw = CAN_SPI_READ(RxData2);      RR_Angle = New_Sensor_Pos (RR_Raw, RR_Home_Pos);				Node_Id[31]++; break;
 		
 		default:       break;
 	
@@ -669,10 +670,11 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan2)
 	
 	Rover_Velocity = (fabs(Motor_Velocity[1]) + fabs(Motor_Velocity[2]) + fabs(Motor_Velocity[3]) + fabs(Motor_Velocity[4])) / 4;
 	
-	FL_LPF_Angle = FL_Flap_LPF(FL_Angle, Prev_FL_LPF_Angle, ALPHA);
+	
+	FL_LPF_Angle = FL_Flap_LPF(Flap_Angle_Left, Prev_FL_LPF_Angle, ALPHA);
 	Prev_FL_LPF_Angle = FL_LPF_Angle;
 	
-	FR_LPF_Angle = FR_Flap_LPF(FR_Angle, Prev_FR_LPF_Angle, ALPHA);
+	FR_LPF_Angle = FR_Flap_LPF(Flap_Angle_Right, Prev_FR_LPF_Angle, ALPHA);
 	Prev_FR_LPF_Angle = FR_LPF_Angle;
 	
 	RL_LPF_Angle = RL_Flap_LPF(RL_Angle, Prev_RL_LPF_Angle, ALPHA);
@@ -2798,6 +2800,7 @@ void Operations_Monitor(void)
 				{
 					Motor_Overloaded = SET;
 					count = HAL_GetTick() - Motor_Tick;
+					Motor_Tick = HAL_GetTick();
 				}
 			}
 		
@@ -2808,7 +2811,7 @@ void Operations_Monitor(void)
 		}
 		Overload_Tick = HAL_GetTick();
 	}
-	Motor_Tick = HAL_GetTick();
+	
 	
 	if (HAL_GetTick() - Vertical_Limit_Tick >= 2000)
 	{
@@ -2830,7 +2833,67 @@ void Operations_Monitor(void)
 		Pitch_Limit_Tick = HAL_GetTick();
 	}
 	
-	OPERATION_MONITOR_FLAG = Drive_Disconnected == SET && Sensor_Disconnected == SET && Drive_Errored == SET && FET_Temp_Exceeded == SET && Motor_Overloaded == SET && E_Stop == SET && Joystick_Disconnected == SET && Vertical_Limit_Exceeded == SET && Contour_Limit_Exceeded == SET && Pitch_Limit_Exceeded == SET ? SET : NULL;
+	Vertical_Error = Right_Pitch_Pos - R_Pitch;
+	if (HAL_GetTick() - Vertical_Tick >= 1000)
+	{
+		if ((Vertical_Error > 10 || Vertical_Error < -10) && Input_Velocity[6] != 0 && Motor_Velocity[6] < 4)
+		{
+			if (HAL_GetTick() - Vert_Resp_Tick >= 3000)
+			{
+				Vertical_Not_Responding = SET;
+				Vert_Resp_Tick = HAL_GetTick();
+			}
+		}
+		
+		else
+		{
+			Vert_Resp_Tick = HAL_GetTick();
+		}
+		
+		Vertical_Tick = HAL_GetTick();
+	}
+	
+	Contour_Error = Right_Roll_Pos - R_Roll;
+	if (HAL_GetTick() - Contour_Tick >= 1000)
+	{
+		if ((Contour_Error > 10 || Contour_Error < -10) && Input_Velocity[7] != 0 && Motor_Velocity[7] < 4)
+		{
+			if (HAL_GetTick() - Cont_Resp_Tick >= 3000)
+			{
+				Contour_Not_Responding = SET;
+				Cont_Resp_Tick = HAL_GetTick();
+			}
+		}
+		
+		else
+		{
+			Cont_Resp_Tick = HAL_GetTick();
+		}
+		Contour_Tick = HAL_GetTick();
+	}
+	
+	Pitch_Error = Shear_Pitch_Home_Pos - Shear_Pitch;
+	if (HAL_GetTick() - Pitch_Tick >= 1000)
+	{
+		if ((Pitch_Error > 10 || Pitch_Error < -10) && Input_Velocity[14] != 0 && Motor_Velocity[14] < 4)
+		{
+			if (HAL_GetTick() - Pitch_Resp_Tick >= 3000)
+			{
+				Pitch_Not_Responding = SET;
+				Pitch_Resp_Tick = HAL_GetTick();
+			}
+		}
+		
+		else
+		{
+			Pitch_Resp_Tick = HAL_GetTick();
+			
+		}
+		
+		Pitch_Tick = HAL_GetTick();
+	}
+		
+	OPERATION_MONITOR_FLAG = Drive_Disconnected == SET && Sensor_Disconnected == SET && Drive_Errored == SET && FET_Temp_Exceeded == SET && Motor_Overloaded == SET && E_Stop == SET && Joystick_Disconnected == SET && Vertical_Limit_Exceeded == SET && Contour_Limit_Exceeded == SET && Pitch_Limit_Exceeded == SET && Vertical_Not_Responding == SET && Contour_Not_Responding == SET ? SET : NULL;
 }
 
 void Emergency_Stop(void)
@@ -2928,9 +2991,33 @@ void Emergency_Stop(void)
 		{
 			
 		}
+		
+		if (Vertical_Not_Responding == SET)
+		{
+			if ((Vertical_Error < 10 || Vertical_Error > -10))
+			{
+				Vertical_Not_Responding = NULL;
+			}
+		}
+		
+		if (Contour_Not_Responding == SET)
+		{
+			if (Contour_Error < 10 || Contour_Error > -10)
+			{
+				Contour_Not_Responding = NULL;
+			}
+		}
+		
+		if (Pitch_Not_Responding == SET)
+		{
+			if (Pitch_Error < 10 || Pitch_Error > -10)
+			{
+				Pitch_Not_Responding = NULL;
+			}
+		}
 	}
 	
-	OPERATION_MONITOR_FLAG =  Drive_Disconnected == NULL && Sensor_Disconnected == NULL && Drive_Errored == NULL && FET_Temp_Exceeded == NULL && Motor_Overloaded == NULL && E_Stop == NULL && Joystick_Disconnected == NULL && Vertical_Limit_Exceeded == NULL && Contour_Limit_Exceeded == NULL && Pitch_Limit_Exceeded == NULL ? NULL : SET;
+	OPERATION_MONITOR_FLAG =  Drive_Disconnected == NULL && Sensor_Disconnected == NULL && Drive_Errored == NULL && FET_Temp_Exceeded == NULL && Motor_Overloaded == NULL && E_Stop == NULL && Joystick_Disconnected == NULL && Vertical_Limit_Exceeded == NULL && Contour_Limit_Exceeded == NULL && Pitch_Limit_Exceeded == NULL && Vertical_Not_Responding == NULL && Contour_Not_Responding == NULL && Pitch_Not_Responding == NULL ? NULL : SET;
 	if (OPERATION_MONITOR_FLAG == NULL) {BUZZER_OFF;}
 	
 	
@@ -3253,15 +3340,9 @@ void EEPROM_Store_Data (void)
 		{
 			EEPROM_Write(60, 0, (uint8_t *)Write_Value, sizeof(Write_Value)); //HAL_Delay(10);
 		}
-		//EEPROM_Write(6, 0, (uint8_t *)Write_Value, sizeof(Write_Value)); 
-		//}
-//		else {}
-//Left_Arm_Current_Pos = Left_Arm_Motor_Count;
-//	Right_Arm_Current_Pos = Right_Arm_Motor_Count;
-//	Pitch_Arm_Current_Pos = Pitch_Arm_Motor_Count;
-
-//	L_Arm_Travel = Left_Arm_Motor_Count * 3.32;
-//	R_Arm_Travel = Right_Arm_Motor_Count * 3.32;
+		
+		Lead_Screw_Length = Vertical_Motor_Count * 0.5;      
+		Vertical_Angle = Lead_Screw_Length * 0.222;
 
 	}
 void Frame_Synchronization(void)
@@ -4023,6 +4104,7 @@ void Drive_Wheel_Controls_Vel_Based(void)
 	
 		Left_Vel_Limit = Vel_Limit + Left_Steering_Speed;  
 		Right_Vel_Limit = Vel_Limit + Right_Steering_Speed;
+
 
 	if (Steering_Mode < 4)
 	{
@@ -5009,7 +5091,6 @@ void UART_tx(void) {
 	
 		Array_Element = ARRAY_SIZE - (65 / pow(Speed, 1.025));
 	
-//	Flap_Angle_Left = Flap_Data_Left[Array_Element];
 	 Flap_Angle_Left = Flap_Data_Array[Array_Element];
 	Flap_Angle_Right = Flap_Data_Right[Array_Element];
 	
@@ -5071,7 +5152,7 @@ void UART_tx(void) {
 	Front_Angle=(FL_LPF_Angle + FR_LPF_Angle)/2;
 	Rear_Angle=(RL_LPF_Angle + RR_LPF_Angle)/2;
 	
-	if(Mode ==1)
+	if(Mode == 2)
 {
  if (Joystick_Temp != Joystick)
         {
@@ -5143,15 +5224,15 @@ else{Macro_Speed=0;}
 	
 Left_Macro_Speed = Right_Macro_Speed = Macro_Speed;
 				
-				Left_Macro_Speed = Left_Macro_Speed > 0 && Left_Macro_Count >= 280 ? 5 : Left_Macro_Speed < 0 && Left_Macro_Count <= 20 ? -5 : Left_Macro_Speed;
-				Right_Macro_Speed = Right_Macro_Speed > 0 && Right_Macro_Count  >= 280 ? 5 : Right_Macro_Speed < 0 && Right_Macro_Count <= 20 ? -5 : Right_Macro_Speed;
+				Left_Macro_Speed = Left_Macro_Speed > 0 && Left_Macro_Motor_Count >= 280 ? 5 : Left_Macro_Speed < 0 && Left_Macro_Motor_Count <= 20 ? -5 : Left_Macro_Speed;
+				Right_Macro_Speed = Right_Macro_Speed > 0 && Right_Macro_Motor_Count  >= 280 ? 5 : Right_Macro_Speed < 0 && Right_Macro_Motor_Count <= 20 ? -5 : Right_Macro_Speed;
 				
-				Left_Macro_Speed = Left_Macro_Speed > 0 && Left_Macro_Count >= 300 ? 0 : Left_Macro_Speed < 0 && Left_Macro_Count <= 0 ? 0 : Left_Macro_Speed;
-				Right_Macro_Speed = Right_Macro_Speed > 0 && Right_Macro_Count  >= 300 ? 0 : Right_Macro_Speed < 0 && Right_Macro_Count <= 0 ? 0 : Right_Macro_Speed;
+				Left_Macro_Speed = Left_Macro_Speed > 0 && Left_Macro_Motor_Count >= 300 ? 0 : Left_Macro_Speed < 0 && Left_Macro_Motor_Count <= 0 ? 0 : Left_Macro_Speed;
+				Right_Macro_Speed = Right_Macro_Speed > 0 && Right_Macro_Motor_Count  >= 300 ? 0 : Right_Macro_Speed < 0 && Right_Macro_Motor_Count <= 0 ? 0 : Right_Macro_Speed;
 	
-	  if (fabs(Right_Macro_Count - Left_Macro_Count) > max_difference)
+	  if (fabs(Right_Macro_Motor_Count - Left_Macro_Motor_Count) > max_difference)
         {
-            if (fabs(Right_Macro_Count - Left_Macro_Count) > 5)
+            if (fabs(Right_Macro_Motor_Count - Left_Macro_Motor_Count) > 5)
             {
 							if(Mode==1){
 							 Left_Macro_Speed = Joystick != 0 ? 0 : Left_Macro_Speed;
@@ -5164,7 +5245,7 @@ Left_Macro_Speed = Right_Macro_Speed = Macro_Speed;
 								else {}
 									
             }
-            Macro_Error = Right_Macro_Count - Left_Macro_Count; 
+            Macro_Error = Right_Macro_Motor_Count - Left_Macro_Motor_Count; 
             Correction_Speed = Macro_Error * Macro_Kp;
             Correction_Speed = Correction_Speed < 2 && Correction_Speed > -2 ? 0 : Correction_Speed;
             Correction_Speed = Correction_Speed > 10 ? 10 : Correction_Speed < -10 ? -10 : Correction_Speed;
