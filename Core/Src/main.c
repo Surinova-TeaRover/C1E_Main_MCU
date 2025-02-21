@@ -387,6 +387,12 @@ float Lead_Screw_Length = 0, Vertical_Angle = 0, Pitch_Target_Angle = 0, Shear_A
 float Shear_Roll_Home_Pos = 0, Pitch_Angle = 0, Contour_Angle = 0;
 /*                                                 PITCH VARIABLES                                                         */
 
+
+///////////////////////////////////////////////////////SHEARING VARIABLES/////////////////////////////////////////////////////
+uint64_t Shearing_Tick = 0, Reboot_Tick = 0;
+bool Shearing_Drive_Errored = NULL, Shearing_Drive_Disconnected = NULL;
+
+/*                                                   SHEARING VARIABLES                                                        */
 bool message_sent = 0;
 char Tx_Initial_msg[]="1.Battery percentage 2. Error Indication  3.Left vertical 4.Left Contour 5.Right vertical 6.Right contour 7.Pitch Arm 8.FET Temperature",Rx_Data[1];
 uint64_t Uart_Time = 0;
@@ -3741,18 +3747,58 @@ void Shearing_Motors (void)
 	{
 		if ( Shearing == 2 )
 		{
-//			if (HAL_GetTick() - Shearing_Tick >= 1000)
-//			{
-//				if ()
-//				Shearing_Tick = HAL_GetTick();
-//			}
-
-			for ( int i=0; i < 5; i++)
-			{			
-				Set_Motor_Velocity( 17 , 20 ); HAL_Delay(10); // SELECTIVE
-				Set_Motor_Velocity( 18 , 20 ); HAL_Delay(10); // MAIN PADDLE
-				Set_Motor_Velocity( 19 , 20 ); HAL_Delay(10);	// SIDE PADDLE
-				//Set_Motor_Velocity( 20 , 20 ); 							// CUTTER
+			if (HAL_GetTick() - Shearing_Tick >= 1500)
+			{
+				for (uint8_t i = 17; i < 20; i++)
+				{
+					
+					if (Node_Id[i] != Node_Id_Temp[i])
+					{
+						Shearing_Drive_Disconnected = NULL;
+						Node_Id_Temp[i] = Node_Id[i];
+					}
+					
+					else
+					{
+						Shearing_Drive_Disconnected = SET;
+						Set_Motor_Velocity( 17 , 0 ); 
+						Set_Motor_Velocity( 18 , 0 ); 
+						Set_Motor_Velocity( 19 , 0 );
+					}
+					
+					if (Axis_State[i] != 8)
+					{
+						Shearing_Drive_Errored = SET;
+						Set_Motor_Velocity( 17 , 0 ); 
+						Set_Motor_Velocity( 18 , 0 ); 
+						Set_Motor_Velocity( 19 , 0 ); 
+						if (HAL_GetTick() - Reboot_Tick >= 3000)
+						{
+							Reboot(i);
+							Reboot_Tick = HAL_GetTick();
+						}
+					}
+					
+					else
+					{
+						Reboot_Tick = 0;
+						Shearing_Drive_Errored = NULL;
+					}
+					
+				}
+				
+				Shearing_Tick = HAL_GetTick();
+			}
+			
+			if (Shearing_Drive_Errored == NULL && Shearing_Drive_Disconnected == NULL)
+			{
+					for ( int i=0; i < 5; i++)
+					{			
+						Set_Motor_Velocity( 17 , 20 ); HAL_Delay(10); // SELECTIVE
+						Set_Motor_Velocity( 18 , 20 ); HAL_Delay(10); // MAIN PADDLE
+						Set_Motor_Velocity( 19 , 20 ); HAL_Delay(10);	// SIDE PADDLE
+						//Set_Motor_Velocity( 20 , 20 ); 							// CUTTER
+					}
 			}
 		}
 		else 
@@ -5214,6 +5260,9 @@ void UART_tx(void) {
 				
 }
 	else if(Mode==3){
+		
+	
+	
 	if( !LR_Bush_Sensed && LF_Bush_Sensed && !RF_Bush_Sensed && !RR_Bush_Sensed)
 		{	
 //		Macro_Speed=Top_Sensing_PID(FL_Angle,NULL);
@@ -5345,6 +5394,25 @@ float Top_Sensing_PID ( float Flap_Value , unsigned long long 	R_Time_Stamp )
 
 void Pitch_Control(void)
 {
+	
+//	if (HAL_GetTick() - Flaps_Tick <= 1500)
+//	{
+//		for (uint8_t i = 27; i < 32; i++)
+//		{
+//			if (Node_Id[i] == Node_Id_Temp[i])
+//			{
+//				Flaps_Disconnected = SET;
+//				Node_Id_Temp[i] = Node_Id[i];
+//			}
+//			
+//			else
+//			{
+//				Flaps_Disconnected = NULL;
+//			}
+//		}
+//		Flaps_Tick = HAL_GetTick();
+//	}
+	
 	Lead_Screw_Length = Vertical_Motor_Count * 0.5;        //to be included in EEPROM function
 	Vertical_Angle = Lead_Screw_Length * 0.222;            // to be included in EEPROM function
 	
