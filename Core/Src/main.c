@@ -78,7 +78,7 @@
 	#define					R_ARM							0x15
 	#define					P_ARM							0x16
 	#define					LT_SENS						0x17
-	#define					L_VERT						0x21
+	//#define					L_VERT						0x21
 	#define					R_VERT						0x22
 	#define					C_LMT							0x07
 	#define					FL_FLAP						0x17
@@ -186,7 +186,7 @@ float Shear_Roll = 0, Shear_Pitch = 0;
 uint16_t Track_Width = 1800, Min_Track_Width = 1800, Zero_Turn_Angle = 33, Wheel_Base = 900; //Track_Width = 1730, Min_Track_Width = 1730
 uint16_t Steer_Angle[5];
 float LF_Steering=0, LR_Steering=0, RF_Steering=0, RR_Steering=0;	
-float LF_HomePos =9, LR_HomePos= 678 , RF_HomePos= 448 , RR_HomePos = 627;	// -->	HOME POSITIONS LF_HomePos = 190, LR_HomePos= 87 , RF_HomePos= 220 , RR_HomePos = 623;
+float LF_HomePos =9, LR_HomePos= 688 , RF_HomePos= 462 , RR_HomePos = 496;	// -->	HOME POSITIONS LF_HomePos = 190, LR_HomePos= 87 , RF_HomePos= 220 , RR_HomePos = 623;
 float LF_Speed=0, LR_Speed=0, RF_Speed=0, RR_Speed=0 , LF_Speed_Temp =0, LR_Speed_Temp =0 , RF_Speed_Temp=0, RR_Speed_Temp=0, LF_Error=0, LR_Error=0, RF_Error=0, RR_Error=0;		
 //int LF_Speed=0, LR_Speed=0, RF_Speed=0, RR_Speed=0 , LF_Speed_Temp =0, LR_Speed_Temp =0 , RF_Speed_Temp=0, RR_Speed_Temp=0;
 //float LF_Error=0, LR_Error=0, RF_Error=0, RR_Error=0;
@@ -280,7 +280,7 @@ double Rover_Centre_Dist=0, TimeTaken=0, Inner_Speed=0, Outer_Speed=0;
 int WheelBase=900/2, TrackWidth=1800/2;  //1300/2
 double kmph = 1;
 int Left_Steering_Speed=0, Right_Steering_Speed=0, Left_Frame_Speed =0;
-float Current_Rover_Velocity = 0, Avg_Steering_Angle = 0, Speed_Factor = 0, Calc_Outer_Speed = 0;
+float Current_Rover_Velocity = 0, Avg_Steering_Angle = 0, Speed_Factor = 0, Calc_Outer_Speed = 0, New_Inner_Angle = 0;
 //int16_t Flap_Data[ARRAY_SIZE] = {0};
 //int Flap_Angle = 0, Flap_Count=0;
 //float Arm_Angle=0,Left_Arm_Pos = 0, Right_Arm_Pos = 0, Pitch_Arm_Pos = 0,Tri_Arm_Pos = 0, Left_Arm_Pos_Temp = 0, Right_Arm_Pos_Temp = 0, Pitch_Arm_Pos_Temp = 0;
@@ -292,7 +292,7 @@ uint8_t Prev_Joystick = 0;
 int count = 0;
 float Rover_Velocity = 0.0;
 
-bool JOYSTICK_STATE_FLAG = SET, AXIS_STATE_FLAG = SET, HEARTBEAT_FLAG = SET, FET_TEMP_FLAG = SET, OPERATION_MONITOR_FLAG = SET, MOTORS_STOP_FLAG = SET;
+bool JOYSTICK_STATE_FLAG = NULL, AXIS_STATE_FLAG = SET, HEARTBEAT_FLAG = SET, FET_TEMP_FLAG = SET, OPERATION_MONITOR_FLAG = NULL, MOTORS_STOP_FLAG = SET;
 uint64_t Tick_Count1 = 0, Tick_Count2 = 0;
 uint16_t Node_Id_Temp[30];
 // FET_Temperature[21];
@@ -378,6 +378,10 @@ float FET_Temperature[20];
 uint8_t Speed_Ref = 0;
 float Vertical_Error = 0, Contour_Error = 0, Pitch_Error = 0;
 
+
+uint64_t Shearing_Tick = 0, Reboot_Tick = 0, Flaps_Tick = 0, Imu_Tick = 0;
+bool Shearing_Drive_Errored = NULL, Shearing_Drive_Disconnected = NULL, Flaps_Disconnected = NULL, IMU_Disconnected = NULL;
+
 /*                                                   OPERATION MONITOR VARIABLES	                                      */
 
 
@@ -389,8 +393,7 @@ float Shear_Roll_Home_Pos = 0, Pitch_Angle = 0, Contour_Angle = 0;
 
 
 ///////////////////////////////////////////////////////SHEARING VARIABLES/////////////////////////////////////////////////////
-uint64_t Shearing_Tick = 0, Reboot_Tick = 0;
-bool Shearing_Drive_Errored = NULL, Shearing_Drive_Disconnected = NULL;
+
 
 /*                                                   SHEARING VARIABLES                                                        */
 bool message_sent = 0;
@@ -522,22 +525,22 @@ double RR_Flap_LPF(double input, double prev_output, double alpha) {
 /* 							UART RECEPTION INTERRUPTS 						*/
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	
-	if (huart -> Instance == UART5)
-	{
+	BT_State1 = BT_READ_1;
+	//if (huart -> Instance == UART5)
+	//{
 			HAL_UART_Receive_DMA(&huart5,BT_Rx ,sizeof(BT_Rx));
 			BT_Count++;
-	}
+//	}
 	
-	if (huart -> Instance == UART4)
-	{
-		HAL_UART_Receive_IT(&huart5,(uint8_t*)Rx_Data ,sizeof(Rx_Data));
-//		if (BT_Read_1  == 1) 
+//	if (huart -> Instance == UART4)
+//	{
+//		HAL_UART_Receive_IT(&huart4,(uint8_t*)Rx_Data ,sizeof(Rx_Data));
+//		if (BT_State1  == 1) 
 //		{
 //			currentCommand=Rx_Data[0];
 //			UART_tx();
 //		} 
-	}
+//	}
 }
 /* 							UART RECEPTION INTERRUPTS 						*/
 void Absolute_Position_Reception( uint8_t Node_Id )
@@ -837,21 +840,21 @@ int main(void)
 		
 	
 		test++;
-//		BT_State = BT_READ;
-//		Joystick_Reception();
+		BT_State = BT_READ;
+		Joystick_Reception();
 		//EEPROM_Store_Data();
-////		Read_EEPROM_Data();	
-//	   Operations_Monitor();
-//		if(OPERATION_MONITOR_FLAG==SET)
-//		{
-//		Drive_Wheel_Controls_Vel_Based();
-////		Left_Frame_Controls();
-//   New_Steering_Controls();
-////	   Frame_Controls();
-//	Dynamic_Width_Adjustment();
-////		Shearing_Motors();
-//		}
-//	else{Emergency_Stop();}
+		Operations_Monitor();
+		
+		if(OPERATION_MONITOR_FLAG==NULL)
+		{
+		Drive_Wheel_Controls_Vel_Based();
+//		Left_Frame_Controls();
+		New_Steering_Controls();
+//		Frame_Controls();
+//		Dynamic_Width_Adjustment();
+//		Shearing_Motors();
+		}
+	else{Emergency_Stop();}
 
 		
     /* USER CODE END WHILE */
@@ -1432,7 +1435,7 @@ void Set_Motor_Velocity ( uint8_t Axis , float Velocity )
 	
 	if (Steering_Mode == 2)
 	{
-		Velocity = (Axis == 1 || Axis == 2) ? -Velocity : Velocity;
+		Velocity = (Axis == 1 || Axis == 2) ? -Velocity : Velocity;   //for zero turn
 	}
 	Velocity = (Axis == 9 || Axis == 2) ? -Velocity : Velocity;
 	CAN_Transmit(Axis,VELOCITY,Velocity,4,DATA); HAL_Delay(2);
@@ -1518,11 +1521,12 @@ void Joystick_Reception(void)
 		Speed 					 = BT_Rx[2]  != 0 ? BT_Rx[2] : Speed ;
 		Steering_Mode 	 = BT_Rx[3];
 		Pot_Angle        = BT_Rx[4]; 
+		//Pot_Angle = 180 - Pot_Angle;
 		Joystick         = BT_Rx[5];
-		//Pot_Angle = Joystick == 0 ? 90 : Pot_Angle;
+		//Joystick = Joystick == 1 ? 2 : Joystick == 2 ? 1 : Joystick; 
 		Shearing				 = BT_Rx[6];
 		Heartbeat        = BT_Rx[7];
-//		Pot_Angle        = abs(Pot_Angle-180);
+
 		Speed_Ref = BT_Rx[2];
 		if( Steering_Mode == 0 ) Steering_Mode=1;
 	
@@ -1558,7 +1562,7 @@ void Joystick_Reception(void)
 	}
 	else {}
 		
-	Rover_Voltage = 54;
+	//Rover_Voltage = 54;
 	if((HAL_GetTick() - Timt_Batt) >= 3000)
 	{
 		Tx_Voltage = Rover_Voltage < 44 ? 0 : 1;
@@ -2439,54 +2443,20 @@ void Transmit_Motor_Torque (void)
 //		Joystick = 0 ;
 //	}
 }
-//void Wheel_Speeds_Calc(int Inner_Angle)
-//{
-
-//	
-//		kmph = Vel_Limit / 30;
-//    Steering_Angle = fabs((float)Inner_Angle); // new float
-//    Rover_Centre_Dist = ((WheelBase/sin(Steering_Angle*(3.14/180)))+TrackWidth)/1000;
-//    TimeTaken =  Rover_Centre_Dist/(kmph*0.277);
-//    Inner_Speed = ((Rover_Centre_Dist- 0.65)/TimeTaken)*3.6;
-//    Inner_Speed = KMPHtoRPS(Inner_Speed) -  Vel_Limit;
-//    
-//    Outer_Speed = ((Rover_Centre_Dist+ 0.65)/TimeTaken)*3.6;
-//    Outer_Speed = KMPHtoRPS(Outer_Speed) - Vel_Limit;
-//   
-//    if ( Inner_Angle <= -3 )
-//    {
-//        Left_Steering_Speed = Inner_Speed;
-//        Right_Steering_Speed = Outer_Speed;
-//    }
-//    else if ( Inner_Angle > 2 ) // Right Turn of the Rover
-//		{
-//				Left_Steering_Speed = Outer_Speed;
-//				Right_Steering_Speed = Inner_Speed;
-//		}
-//		else
-//		{
-//				Left_Steering_Speed = Right_Steering_Speed = NULL;		
-//		}
-
-//}
-
 void Wheel_Speeds_Calc(int Inner_Angle)
 {
 
-		Current_Rover_Velocity = roundf (Rover_Velocity);
-		kmph = Current_Rover_Velocity / 30;
+	
+		kmph = Vel_Limit / 30;
     Steering_Angle = fabs((float)Inner_Angle); // new float
     Rover_Centre_Dist = ((WheelBase/sin(Steering_Angle*(3.14/180)))+TrackWidth)/1000;
     TimeTaken =  Rover_Centre_Dist/(kmph*0.277);
-    Inner_Speed = ((Rover_Centre_Dist- 0.9)/TimeTaken)*3.6;
-    Inner_Speed = KMPHtoRPS(Inner_Speed) -  Current_Rover_Velocity;
+    Inner_Speed = ((Rover_Centre_Dist- 0.65)/TimeTaken)*3.6;
+    Inner_Speed = KMPHtoRPS(Inner_Speed) -  Vel_Limit;
     
-    Outer_Speed = ((Rover_Centre_Dist+ 0.9)/TimeTaken)*3.6;
+    Outer_Speed = ((Rover_Centre_Dist+ 0.65)/TimeTaken)*3.6;
     Outer_Speed = KMPHtoRPS(Outer_Speed) - Vel_Limit;
-	
-		Speed_Factor = Outer_Speed / Inner_Speed;
-		Calc_Outer_Speed = Speed_Factor * Inner_Speed;
-		
+   
     if ( Inner_Angle <= -3 )
     {
         Left_Steering_Speed = Inner_Speed;
@@ -2503,6 +2473,40 @@ void Wheel_Speeds_Calc(int Inner_Angle)
 		}
 
 }
+
+//void Wheel_Speeds_Calc(int Inner_Angle)
+//{
+
+//		Current_Rover_Velocity = roundf (Rover_Velocity);            //CHANGE
+//		kmph = Current_Rover_Velocity / 30;                          //CHANGE
+//    Steering_Angle = fabs((float)Inner_Angle); // new float
+//    Rover_Centre_Dist = ((WheelBase/sin(Steering_Angle*(3.14/180)))+TrackWidth)/1000;
+//    TimeTaken =  Rover_Centre_Dist/(kmph*0.277);
+//    Inner_Speed = ((Rover_Centre_Dist- 0.9)/TimeTaken)*3.6;
+//    Inner_Speed = KMPHtoRPS(Inner_Speed) -  Current_Rover_Velocity;     //CHANGE
+//    
+//    Outer_Speed = ((Rover_Centre_Dist+ 0.9)/TimeTaken)*3.6;
+//    Outer_Speed = KMPHtoRPS(Outer_Speed) - Current_Rover_Velocity;
+//	
+//		Speed_Factor = Outer_Speed / Inner_Speed;
+//		Calc_Outer_Speed = Speed_Factor * Inner_Speed;
+//		
+//    if ( Inner_Angle <= -3 )
+//    {
+//        Left_Steering_Speed = Inner_Speed;
+//        Right_Steering_Speed = Outer_Speed;
+//    }
+//    else if ( Inner_Angle > 2 ) // Right Turn of the Rover
+//		{
+//				Left_Steering_Speed = Outer_Speed;
+//				Right_Steering_Speed = Inner_Speed;
+//		}
+//		else
+//		{
+//				Left_Steering_Speed = Right_Steering_Speed = NULL;		
+//		}
+
+//}
 float Differintial_Angle ( double Inner_Angle_Set )
 {
 	double TAN=0;float theta=0;
@@ -2769,7 +2773,7 @@ void Operations_Monitor(void)
 	
 	if (HAL_GetTick() - Heartbeat_Tick >= 1500)
 	{
-		for (uint8_t i = 1; i < 20; i++)
+		for (uint8_t i = 1; i < 17; i++)
 		{
 			if (i != 5)
 			{
@@ -2781,7 +2785,7 @@ void Operations_Monitor(void)
 			}
 		}
 		
-		for (uint8_t i = 21; i < 30; i++)
+		for (uint8_t i = 21; i < 27; i++)
 		{
 
 				if (Node_Id[i] == Node_Id_Temp[i]) 
@@ -2796,7 +2800,7 @@ void Operations_Monitor(void)
 	
 	if (HAL_GetTick() - Drive_Error_Tick >= 1000)
 	{
-		for (uint8_t i = 1; i < 20; i++)
+		for (uint8_t i = 1; i < 17; i++)
 		{
 			if (i != 5)
 			{
@@ -2811,7 +2815,7 @@ void Operations_Monitor(void)
 	
 	if (HAL_GetTick() - Fet_Temp_Tick >= 1000)
 	{
-		for (uint8_t i = 1; i < 20; i++)
+		for (uint8_t i = 1; i < 5; i++)
 		{
 			if (FET_Temperature[i] > 90)
 			{
@@ -2932,7 +2936,7 @@ void Operations_Monitor(void)
 		Pitch_Tick = HAL_GetTick();
 	}
 		
-	OPERATION_MONITOR_FLAG = Drive_Disconnected == SET && Sensor_Disconnected == SET && Drive_Errored == SET && FET_Temp_Exceeded == SET && Motor_Overloaded == SET && E_Stop == SET && Joystick_Disconnected == SET && Vertical_Limit_Exceeded == SET && Contour_Limit_Exceeded == SET && Pitch_Limit_Exceeded == SET && Vertical_Not_Responding == SET && Contour_Not_Responding == SET ? SET : NULL;
+	OPERATION_MONITOR_FLAG = Drive_Disconnected == SET || Sensor_Disconnected == SET || Drive_Errored == SET;// && FET_Temp_Exceeded == SET && Motor_Overloaded == SET && E_Stop == SET && Joystick_Disconnected == SET && Vertical_Limit_Exceeded == SET && Contour_Limit_Exceeded == SET && Pitch_Limit_Exceeded == SET && Vertical_Not_Responding == SET && Contour_Not_Responding == SET ? SET : NULL;
 }
 
 void Emergency_Stop(void)
@@ -2945,11 +2949,11 @@ void Emergency_Stop(void)
 		Input_Velocity[i] = 0;
 	}
 	
-	if (Rover_Velocity < 3)
-	{
+//	if (Rover_Velocity < 3)
+//	{
 		if (Drive_Disconnected == SET)
 		{
-			for (uint8_t i = 1; i < 20; i++)
+			for (uint8_t i = 1; i < 17; i++)
 			{
 				if(i != 5)
 				{
@@ -2965,7 +2969,7 @@ void Emergency_Stop(void)
 		
 		if (Sensor_Disconnected == SET)
 		{
-			for (uint8_t i = 21; i < 30; i++)
+			for (uint8_t i = 21; i < 27; i++)
 			{
 				while (Node_Id[i] == Node_Id_Temp[i]){}
 			}
@@ -2974,8 +2978,10 @@ void Emergency_Stop(void)
 		
 		if (Drive_Errored == SET)
 		{
-			for (uint8_t i = 1; i < 20; i++)
+			for (uint8_t i = 1; i < 17; i++)
 			{
+				if (i != 5)
+				{
 					while (Axis_State[i] != 8)
 					{
 						if(i == 6 || i == 12 || i == 13 || i == 15 || i == 16)
@@ -2992,6 +2998,7 @@ void Emergency_Stop(void)
 							HAL_Delay(2000);
 						}
 					}
+				}
 			}
 			
 			Drive_Errored = NULL;
@@ -3054,9 +3061,9 @@ void Emergency_Stop(void)
 				Pitch_Not_Responding = NULL;
 			}
 		}
-	}
+	//}
 	
-	OPERATION_MONITOR_FLAG =  Drive_Disconnected == NULL && Sensor_Disconnected == NULL && Drive_Errored == NULL && FET_Temp_Exceeded == NULL && Motor_Overloaded == NULL && E_Stop == NULL && Joystick_Disconnected == NULL && Vertical_Limit_Exceeded == NULL && Contour_Limit_Exceeded == NULL && Pitch_Limit_Exceeded == NULL && Vertical_Not_Responding == NULL && Contour_Not_Responding == NULL && Pitch_Not_Responding == NULL ? NULL : SET;
+	OPERATION_MONITOR_FLAG =  Drive_Disconnected == NULL && Sensor_Disconnected == NULL && Drive_Errored == NULL;// && FET_Temp_Exceeded == NULL && Motor_Overloaded == NULL && E_Stop == NULL && Joystick_Disconnected == NULL && Vertical_Limit_Exceeded == NULL && Contour_Limit_Exceeded == NULL && Pitch_Limit_Exceeded == NULL && Vertical_Not_Responding == NULL && Contour_Not_Responding == NULL && Pitch_Not_Responding == NULL ? NULL : SET;
 	if (OPERATION_MONITOR_FLAG == NULL) {BUZZER_OFF;}
 	
 	
@@ -4194,11 +4201,11 @@ void Drive_Wheel_Controls_Vel_Based(void)
 				Left_Diff = Left_Diff > -100 && Left_Diff < 100 ? Left_Diff : 0;
 				
 				
-				if(HAL_GetTick() - left_tick_count >= 50)
+				if(HAL_GetTick() - left_tick_count >= 1000)
 				{
 					if(Left_Vel_Limit > Left_Transmit_Vel)
 					{
-//						Left_Transmit_Vel++;
+						//Left_Transmit_Vel++;
 							Left_Transmit_Vel = Left_Transmit_Vel + Left_Diff;
 					}
 					
@@ -4221,7 +4228,7 @@ void Drive_Wheel_Controls_Vel_Based(void)
 			
 			if(Right_Vel_Limit != Right_Transmit_Vel)
 			{
-				if(HAL_GetTick() - right_tick_count >= 50)
+				if(HAL_GetTick() - right_tick_count >= 1000)
 				{
 					if(Right_Vel_Limit > Right_Transmit_Vel)
 					{
@@ -4657,7 +4664,8 @@ void New_Steering_Controls (void)
 							
 							if ( Inner_Angle <= -1 )  // Left Turn of the Rover
 							{
-								Avg_Steering_Angle = fabs(fabs(LF_Steering) + fabs(LR_Steering) / 2);
+								Avg_Steering_Angle = fabs(fabs(LF_Steering) + fabs(LR_Steering) / 2);     //CHANGE
+								New_Inner_Angle = (LF_Steering + LR_Steering) / 2;       //both should be either +ve or -ve
 								
 								LF_Error = (-Inner_Angle - (LF_Steering)) ;		
 								LR_Error = (Inner_Angle - (LR_Steering)) ; 		
@@ -4667,10 +4675,12 @@ void New_Steering_Controls (void)
 
 								LF_Speed = LF_Error * STEERING_KP;
 								LR_Speed = LR_Error * STEERING_KP;							
-												
-								Outer_Angle = Differintial_Angle((-Avg_Steering_Angle ))	;		
-													
-								Outer_Angle_2	= Differintial_Angle((-Avg_Steering_Angle ))	;	
+								
+								//Outer_Angle = Differintial_Angle((-Inner_Angle ))	;
+								Outer_Angle = Differintial_Angle((Avg_Steering_Angle ))	;		//CHANGE
+									
+								//Outer_Angle_2	= Differintial_Angle((-Inner_Angle ))	;
+								Outer_Angle_2	= Differintial_Angle((Avg_Steering_Angle ))	;	   //CHANGE
 								
 								RF_Error = (-Outer_Angle - (-RF_Steering)) ;
 								RR_Error = (-Outer_Angle - (RR_Steering)) ; 
@@ -4688,7 +4698,8 @@ void New_Steering_Controls (void)
 							else if ( Inner_Angle >= 0 ) // Right Turn of the Rover   //0
 							{
 								
-								Avg_Steering_Angle = fabs((fabs(RF_Steering) + fabs(RR_Steering)) / 2);
+								Avg_Steering_Angle = fabs((fabs(RF_Steering) + fabs(RR_Steering)) / 2);      //CHANGE
+								New_Inner_Angle = (RF_Steering + RR_Steering) / 2;     //both should be either +ve or -ve    
 								
 								RF_Error = (Inner_Angle - (-RF_Steering)) ;			
 								RR_Error = (Inner_Angle - (RR_Steering)) ; 
@@ -4699,9 +4710,11 @@ void New_Steering_Controls (void)
 								RF_Speed = RF_Error * STEERING_KP;
 								RR_Speed = RR_Error * STEERING_KP;	
 								
-								Outer_Angle = Differintial_Angle((Avg_Steering_Angle ))	;		
+								//Outer_Angle = Differintial_Angle((Inner_Angle ))	;	
+								Outer_Angle = Differintial_Angle((Avg_Steering_Angle ))	;		      //CHANGE
 									
-								Outer_Angle_2	= Differintial_Angle((Avg_Steering_Angle ));		
+								//Outer_Angle_2	= Differintial_Angle((Inner_Angle ));
+								Outer_Angle_2	= Differintial_Angle((Avg_Steering_Angle ));		    //CHANGE
 								
 								LF_Error = (-Outer_Angle- (LF_Steering)) ;
 								LR_Error = (Outer_Angle_2 - (LR_Steering)) ; 
@@ -4726,7 +4739,9 @@ void New_Steering_Controls (void)
 								LF_Error = LR_Error = RF_Error = RR_Error = 1;
 							}
 					
-							Wheel_Speeds_Calc(Avg_Steering_Angle);
+							
+							Wheel_Speeds_Calc(Inner_Angle);
+							//Wheel_Speeds_Calc(Avg_Steering_Angle);                 //CHANGE
 							break;
 			/*///////////////////////////////////////////////////////////////////////////////////	ALL WHEEL STEERING  - STEERING FUNCTION ///////////////////////////////////////////////////////////////////////////////	*/				
 			case CRAB :							//	--> CRAB STEERING			
@@ -4996,6 +5011,7 @@ void Steering_Pos_Controls (void)
 
 void Initial_Msg(void)
 {
+		//BT_State1 = BT_READ_1;
 	  if (BT_State1 == 1 && message_sent == 0) {
         HAL_UART_Transmit_IT(&huart5, (uint8_t*)Tx_Initial_msg, sizeof(Tx_Initial_msg));
         message_sent = 1;
@@ -5261,7 +5277,23 @@ void UART_tx(void) {
 }
 	else if(Mode==3){
 		
-	
+		if (HAL_GetTick() - Flaps_Tick <= 1500)
+	{
+		for (uint8_t i = 28; i < 32; i++)
+		{
+			if (Node_Id[i] == Node_Id_Temp[i])
+			{
+				Flaps_Disconnected = SET;
+				Node_Id_Temp[i] = Node_Id[i];
+			}
+			
+			else
+			{
+				Flaps_Disconnected = NULL;
+			}
+		}
+		Flaps_Tick = HAL_GetTick();
+	}
 	
 	if( !LR_Bush_Sensed && LF_Bush_Sensed && !RF_Bush_Sensed && !RR_Bush_Sensed)
 		{	
@@ -5395,23 +5427,21 @@ float Top_Sensing_PID ( float Flap_Value , unsigned long long 	R_Time_Stamp )
 void Pitch_Control(void)
 {
 	
-//	if (HAL_GetTick() - Flaps_Tick <= 1500)
-//	{
-//		for (uint8_t i = 27; i < 32; i++)
-//		{
-//			if (Node_Id[i] == Node_Id_Temp[i])
-//			{
-//				Flaps_Disconnected = SET;
-//				Node_Id_Temp[i] = Node_Id[i];
-//			}
-//			
-//			else
-//			{
-//				Flaps_Disconnected = NULL;
-//			}
-//		}
-//		Flaps_Tick = HAL_GetTick();
-//	}
+
+	if (HAL_GetTick() - Imu_Tick >= 1000)
+	{
+		if(Node_Id[27] == Node_Id_Temp[27])
+		{
+			IMU_Disconnected = SET;
+		}
+		
+		else
+		{
+			IMU_Disconnected = NULL;
+		}
+		
+		Imu_Tick = HAL_GetTick();
+	}
 	
 	Lead_Screw_Length = Vertical_Motor_Count * 0.5;        //to be included in EEPROM function
 	Vertical_Angle = Lead_Screw_Length * 0.222;            // to be included in EEPROM function
