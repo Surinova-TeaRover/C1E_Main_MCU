@@ -407,7 +407,7 @@ volatile uint8_t sendContinuouslyFlag = 0;
 float Main_Bt_Percentage = 0;	
 char outputBuffer[1024],Main_Battery[42],Left_IMU_Data[50],Right_IMU_Data[50],Pitch_IMU_Data[50];
 char Node_ID_To_Name[][10]={"","LCW","RFW","RRW","R_Vert","L_Contour","R_Contour","RFS","RRS","","","PitchArm","L_Macro","R_Macro","Width"};
-
+float LF = 0, LR = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -470,6 +470,7 @@ void Left_Frame_Controls (void);
  void UART_tx(void);
  void Flap_Sensor_Pos(double Sensor_Value, double Zero_Pos);
  float Top_Sensing_PID ( float Flap_Value , unsigned long long 	R_Time_Stamp );
+ void All_Macro_Sensing(void);
  //void Set_Motor_Position (uint8_t Axis, float Position);
 /* USER CODE END PFP */
 
@@ -743,7 +744,7 @@ int main(void)
 	HAL_CAN_Start(&hcan2);HAL_Delay(1000);
 	HAL_CAN_ActivateNotification(&hcan2, CAN_IT_RX_FIFO1_MSG_PENDING);
 	
-	HAL_Delay(1500);
+	HAL_Delay(5000);
 //	for ( uint8_t i = 6 ; i < 25 ; i++ ) {	Start_Calibration_For (i, 8, 10); }
 //	for ( uint8_t i = 1 ; i < 5; i++ ) { Start_Calibration_For (6, 8, 5);Start_Calibration_For (13, 8, 5);Start_Calibration_For (12, 8, 5);Start_Calibration_For (14, 8, 5);}
 	
@@ -819,7 +820,7 @@ int main(void)
 //	EEPROM_Error = SET;
 //	Emergency_Stop();
 //}
-
+	//HAL_Delay(10000);
 	BUZZER_OFF;
 	
 //	Set_Motor_Velocity(LFS, -15);
@@ -850,8 +851,9 @@ int main(void)
 		Drive_Wheel_Controls_Vel_Based();
 //		Left_Frame_Controls();
 		New_Steering_Controls();
-//		Frame_Controls();
-//		Dynamic_Width_Adjustment();
+		All_Macro_Sensing();
+		Frame_Controls();
+		Dynamic_Width_Adjustment();
 //		Shearing_Motors();
 		}
 	else{Emergency_Stop();}
@@ -1521,9 +1523,9 @@ void Joystick_Reception(void)
 		Speed 					 = BT_Rx[2]  != 0 ? BT_Rx[2] : Speed ;
 		Steering_Mode 	 = BT_Rx[3];
 		Pot_Angle        = BT_Rx[4]; 
-		//Pot_Angle = 180 - Pot_Angle;
+		Pot_Angle = 180 - Pot_Angle;    //Switching direction of rover
 		Joystick         = BT_Rx[5];
-		//Joystick = Joystick == 1 ? 2 : Joystick == 2 ? 1 : Joystick; 
+		Joystick = Joystick == 1 ? 2 : Joystick == 2 ? 1 : Joystick;   //Switching Directin of rover
 		Shearing				 = BT_Rx[6];
 		Heartbeat        = BT_Rx[7];
 
@@ -1562,13 +1564,13 @@ void Joystick_Reception(void)
 	}
 	else {}
 		
-	//Rover_Voltage = 54;
-	if((HAL_GetTick() - Timt_Batt) >= 3000)
-	{
-		Tx_Voltage = Rover_Voltage < 44 ? 0 : 1;
-		HAL_UART_Transmit_DMA(&huart5, &Tx_Voltage, sizeof(Tx_Voltage));
-		Timt_Batt = HAL_GetTick();
-	}
+//	//Rover_Voltage = 54;
+//	if((HAL_GetTick() - Timt_Batt) >= 3000)
+//	{
+//		Tx_Voltage = Rover_Voltage < 44 ? 0 : 1;
+//		HAL_UART_Transmit_DMA(&huart5, &Tx_Voltage, sizeof(Tx_Voltage));
+//		Timt_Batt = HAL_GetTick();
+//	}
 }
 void Manual_Wheel_Control(void)
 { 
@@ -2443,54 +2445,20 @@ void Transmit_Motor_Torque (void)
 //		Joystick = 0 ;
 //	}
 }
-void Wheel_Speeds_Calc(int Inner_Angle)
-{
-
-	
-		kmph = Vel_Limit / 30;
-    Steering_Angle = fabs((float)Inner_Angle); // new float
-    Rover_Centre_Dist = ((WheelBase/sin(Steering_Angle*(3.14/180)))+TrackWidth)/1000;
-    TimeTaken =  Rover_Centre_Dist/(kmph*0.277);
-    Inner_Speed = ((Rover_Centre_Dist- 0.65)/TimeTaken)*3.6;
-    Inner_Speed = KMPHtoRPS(Inner_Speed) -  Vel_Limit;
-    
-    Outer_Speed = ((Rover_Centre_Dist+ 0.65)/TimeTaken)*3.6;
-    Outer_Speed = KMPHtoRPS(Outer_Speed) - Vel_Limit;
-   
-    if ( Inner_Angle <= -3 )
-    {
-        Left_Steering_Speed = Inner_Speed;
-        Right_Steering_Speed = Outer_Speed;
-    }
-    else if ( Inner_Angle > 2 ) // Right Turn of the Rover
-		{
-				Left_Steering_Speed = Outer_Speed;
-				Right_Steering_Speed = Inner_Speed;
-		}
-		else
-		{
-				Left_Steering_Speed = Right_Steering_Speed = NULL;		
-		}
-
-}
-
 //void Wheel_Speeds_Calc(int Inner_Angle)
 //{
 
-//		Current_Rover_Velocity = roundf (Rover_Velocity);            //CHANGE
-//		kmph = Current_Rover_Velocity / 30;                          //CHANGE
+//	
+//		kmph = Vel_Limit / 30;
 //    Steering_Angle = fabs((float)Inner_Angle); // new float
 //    Rover_Centre_Dist = ((WheelBase/sin(Steering_Angle*(3.14/180)))+TrackWidth)/1000;
 //    TimeTaken =  Rover_Centre_Dist/(kmph*0.277);
-//    Inner_Speed = ((Rover_Centre_Dist- 0.9)/TimeTaken)*3.6;
-//    Inner_Speed = KMPHtoRPS(Inner_Speed) -  Current_Rover_Velocity;     //CHANGE
+//    Inner_Speed = ((Rover_Centre_Dist- 0.9)/TimeTaken)*3.6;      //0.65
+//    Inner_Speed = KMPHtoRPS(Inner_Speed) -  Vel_Limit;
 //    
-//    Outer_Speed = ((Rover_Centre_Dist+ 0.9)/TimeTaken)*3.6;
-//    Outer_Speed = KMPHtoRPS(Outer_Speed) - Current_Rover_Velocity;
-//	
-//		Speed_Factor = Outer_Speed / Inner_Speed;
-//		Calc_Outer_Speed = Speed_Factor * Inner_Speed;
-//		
+//    Outer_Speed = ((Rover_Centre_Dist+ 0.9)/TimeTaken)*3.6;      //0.65
+//    Outer_Speed = KMPHtoRPS(Outer_Speed) - Vel_Limit;
+//   
 //    if ( Inner_Angle <= -3 )
 //    {
 //        Left_Steering_Speed = Inner_Speed;
@@ -2507,6 +2475,68 @@ void Wheel_Speeds_Calc(int Inner_Angle)
 //		}
 
 //}
+
+void Wheel_Speeds_Calc(int Inner_Angle)
+{
+
+		Current_Rover_Velocity = roundf (Rover_Velocity);            //CHANGE
+		kmph = Current_Rover_Velocity / 30;                          //CHANGE
+    Steering_Angle = fabs((float)Inner_Angle); // new float
+    Rover_Centre_Dist = ((WheelBase/sin(Steering_Angle*(3.14/180)))+TrackWidth)/1000;
+    TimeTaken =  Rover_Centre_Dist/(kmph*0.277);
+    Inner_Speed = ((Rover_Centre_Dist- 0.9)/TimeTaken)*3.6;
+    Inner_Speed = KMPHtoRPS(Inner_Speed) -  Current_Rover_Velocity;     //CHANGE
+    
+    Outer_Speed = ((Rover_Centre_Dist+ 0.9)/TimeTaken)*3.6;
+    Outer_Speed = KMPHtoRPS(Outer_Speed) - Current_Rover_Velocity;
+	
+		Speed_Factor = Outer_Speed / Inner_Speed;
+		Calc_Outer_Speed = Speed_Factor * Inner_Speed;
+		
+    if ( Inner_Angle <= -3 )
+    {
+				if (Joystick == 1)
+				{
+        Left_Steering_Speed = Inner_Speed;
+        Right_Steering_Speed = Outer_Speed;
+				}
+			
+					else if (Joystick == 2)
+					{
+						Left_Steering_Speed = Outer_Speed;      //Switching rover direction
+						Right_Steering_Speed = Inner_Speed;      //Switching rover direction
+					}
+					
+					else
+					{
+						Left_Steering_Speed = Right_Steering_Speed = 0;
+					}
+    }
+    else if ( Inner_Angle > 2 ) // Right Turn of the Rover
+		{
+			if (Joystick == 1)
+			{
+				Left_Steering_Speed = Outer_Speed;
+				Right_Steering_Speed = Inner_Speed;
+			}
+			
+			else if (Joystick == 2)
+			{
+					Left_Steering_Speed = Inner_Speed;         //Switching rover direction
+					Right_Steering_Speed = Outer_Speed;          //Switching rover direction
+			}
+			
+			else
+			{
+				Left_Steering_Speed = Right_Steering_Speed = 0;
+			}
+		}
+		else
+		{
+				Left_Steering_Speed = Right_Steering_Speed = NULL;		
+		}
+
+}
 float Differintial_Angle ( double Inner_Angle_Set )
 {
 	double TAN=0;float theta=0;
@@ -3139,7 +3169,7 @@ void Frame_Controls(void)
 		if( R_Vert_Speed_Temp != R_Vert_Speed ) 																															// checking if the new value is not equal to old value
 		{
 			Input_Velocity[6] = R_Vert_Speed;
-			Set_Motor_Velocity (RVert , -R_Vert_Speed );	
+			Set_Motor_Velocity (RVert , R_Vert_Speed );	  //-
 			R_Vert_Speed_Temp = R_Vert_Speed ;																																// Overwriting old value with new value.
 		} 
 	//	Contour_Speed = Contour_Speed > 0 && Contour_Motor_Count >= 550 ? 0 : Contour_Speed < 0 && Contour_Motor_Count <= -550 ? 0 : Contour_Speed ;
@@ -3147,7 +3177,7 @@ void Frame_Controls(void)
 		if( Contour_Speed_Temp != Contour_Speed ) 																														// checking if the new value is not equal to old value
 		{
 			Input_Velocity[7] = Contour_Speed;
-			Set_Motor_Velocity (Contour , Contour_Speed );
+			Set_Motor_Velocity (Contour , -Contour_Speed );
 			Contour_Speed_Temp = Contour_Speed ;																															// Overwriting old value with new value.
 		}		
 		
@@ -3676,15 +3706,15 @@ void Dynamic_Width_Adjustment (void)
 	{
 		if ( Steering_Mode == WIDTH_SHRINK && Angle_Ready ) 
 		{
-			if ( Joystick == 1 )Width_Motor_Speed =  -Width_Speed;
-			else if ( Joystick == 2 ) Width_Motor_Speed  = Width_Speed;
+			if ( Joystick == 1 )Width_Motor_Speed =  Width_Speed;
+			else if ( Joystick == 2 ) Width_Motor_Speed  = -Width_Speed;
 			else Width_Motor_Speed = 0;
 		}
 		
 		if ( Steering_Mode == WIDTH_EXTEND  && Angle_Ready ) 
 		{
-			if ( Joystick ==1 ) Width_Motor_Speed = Width_Speed;
-			else if ( Joystick == 2 ) Width_Motor_Speed = -Width_Speed;
+			if ( Joystick ==1 ) Width_Motor_Speed = -Width_Speed;
+			else if ( Joystick == 2 ) Width_Motor_Speed = Width_Speed;
 			else Width_Motor_Speed = 0;
 		}
 		
@@ -3703,14 +3733,14 @@ void Dynamic_Width_Adjustment (void)
 	if( Steering_Mode < 4 ) Width_Motor_Speed = 0;
 	Lower_Width_Motor_Speed = Upper_Width_Motor_Speed = Width_Motor_Speed ;
 	
-	if (Steering_Mode >= 4)
-	{
-		L_Roll_Err = Left_Roll_Pos - L_Roll;
-		L_Roll_Err = L_Roll_Err <= 0.3 && L_Roll_Err >= -0.3 ? 0 : L_Roll_Err;
-		Width_Correction_Speed = Left_Arm_PID(L_Roll_Err, 0);
-		Width_Correction_Speed = Width_Correction_Speed >= 40 ? 40 : Width_Correction_Speed < -40 ? -40 : Width_Correction_Speed;
-		Upper_Width_Motor_Speed = Upper_Width_Motor_Speed + Width_Correction_Speed;
-	}
+//	if (Steering_Mode >= 4)
+//	{
+//		L_Roll_Err = Left_Roll_Pos - L_Roll;
+//		L_Roll_Err = L_Roll_Err <= 0.3 && L_Roll_Err >= -0.3 ? 0 : L_Roll_Err;
+//		Width_Correction_Speed = Left_Arm_PID(L_Roll_Err, 0);
+//		Width_Correction_Speed = Width_Correction_Speed >= 40 ? 40 : Width_Correction_Speed < -40 ? -40 : Width_Correction_Speed;
+//		Upper_Width_Motor_Speed = Upper_Width_Motor_Speed + Width_Correction_Speed;
+//	}
 	//Lower_Width_Motor_Speed=(( Lower_Width_Motor_Speed < 0) && (Lower_Width_Motor_Count<=-550  )) ? -10:(( Lower_Width_Motor_Speed > 0) && ( Lower_Width_Motor_Count >= -50 ))?10:Lower_Width_Motor_Speed;
 	//if (( Lower_Width_Motor_Speed < 0) && (( Lower_Width_Motor_Count >= -605 && Lower_Width_Motor_Count<=-595  )|| Lower_Width_Motor_Count <= -605)) Lower_Width_Motor_Speed = 0;
 	//else if (( Lower_Width_Motor_Speed > 0) && (( Lower_Width_Motor_Count >=-5 && Lower_Width_Motor_Count<=5 )||Lower_Width_Motor_Count>=5 )) Lower_Width_Motor_Speed = 0;
@@ -4168,6 +4198,8 @@ void Demo()
 
 void Drive_Wheel_Controls_Vel_Based(void)
 {
+	if (Mode != 2)
+	{
 	Input_Vel = Speed * 15;
 	Input_Vel = Steering_Mode != 1 ? 15 : Input_Vel;
 	Left_Steering_Speed = Steering_Mode != 1 ? 0 : Left_Steering_Speed;
@@ -4201,7 +4233,7 @@ void Drive_Wheel_Controls_Vel_Based(void)
 				Left_Diff = Left_Diff > -100 && Left_Diff < 100 ? Left_Diff : 0;
 				
 				
-				if(HAL_GetTick() - left_tick_count >= 1000)
+				if(HAL_GetTick() - left_tick_count >= 50)
 				{
 					if(Left_Vel_Limit > Left_Transmit_Vel)
 					{
@@ -4228,7 +4260,7 @@ void Drive_Wheel_Controls_Vel_Based(void)
 			
 			if(Right_Vel_Limit != Right_Transmit_Vel)
 			{
-				if(HAL_GetTick() - right_tick_count >= 1000)
+				if(HAL_GetTick() - right_tick_count >= 50)
 				{
 					if(Right_Vel_Limit > Right_Transmit_Vel)
 					{
@@ -4292,7 +4324,7 @@ void Drive_Wheel_Controls_Vel_Based(void)
 		}
 			
 			
-			
+	}	
 			
 		
 			
@@ -4664,8 +4696,11 @@ void New_Steering_Controls (void)
 							
 							if ( Inner_Angle <= -1 )  // Left Turn of the Rover
 							{
-								Avg_Steering_Angle = fabs(fabs(LF_Steering) + fabs(LR_Steering) / 2);     //CHANGE
-								New_Inner_Angle = (LF_Steering + LR_Steering) / 2;       //both should be either +ve or -ve
+								Avg_Steering_Angle = fabs((fabs(LF_Steering) + fabs(LR_Steering)) / 2);     //CHANGE
+								LF = fabs(LF_Steering);
+								LR = fabs(LR_Steering);
+								New_Inner_Angle =  fabs((fabs(LF_Steering) + fabs(LR_Steering)) / 2);     //both should be either +ve or -ve
+								New_Inner_Angle = -New_Inner_Angle;
 								
 								LF_Error = (-Inner_Angle - (LF_Steering)) ;		
 								LR_Error = (Inner_Angle - (LR_Steering)) ; 		
@@ -4699,7 +4734,7 @@ void New_Steering_Controls (void)
 							{
 								
 								Avg_Steering_Angle = fabs((fabs(RF_Steering) + fabs(RR_Steering)) / 2);      //CHANGE
-								New_Inner_Angle = (RF_Steering + RR_Steering) / 2;     //both should be either +ve or -ve    
+								New_Inner_Angle = fabs((fabs(RF_Steering) + fabs(RR_Steering)) / 2);     //both should be either +ve or -ve    
 								
 								RF_Error = (Inner_Angle - (-RF_Steering)) ;			
 								RR_Error = (Inner_Angle - (RR_Steering)) ; 
@@ -4740,8 +4775,8 @@ void New_Steering_Controls (void)
 							}
 					
 							
-							Wheel_Speeds_Calc(Inner_Angle);
-							//Wheel_Speeds_Calc(Avg_Steering_Angle);                 //CHANGE
+							//Wheel_Speeds_Calc(Inner_Angle);
+							Wheel_Speeds_Calc(New_Inner_Angle);                 //CHANGE
 							break;
 			/*///////////////////////////////////////////////////////////////////////////////////	ALL WHEEL STEERING  - STEERING FUNCTION ///////////////////////////////////////////////////////////////////////////////	*/				
 			case CRAB :							//	--> CRAB STEERING			
@@ -4808,7 +4843,7 @@ void New_Steering_Controls (void)
 							
 				case WIDTH_EXTEND: 
 					
-							LS_Angle = WIDE_ANGLE; 
+							LS_Angle = -WIDE_ANGLE; 
 							RS_Angle =-WIDE_ANGLE; 
 							LF_Speed = (LF_Steering > LS_Angle -STEERING_BOUNDARY && LF_Steering < LS_Angle +STEERING_BOUNDARY ) ? 0 : ( LF_Steering < LS_Angle ) ? STEERING_HOMING_SPEED: ( LF_Steering > LS_Angle ) ? -STEERING_HOMING_SPEED : 0;		
 							LR_Speed = (LR_Steering > LS_Angle -STEERING_BOUNDARY && LR_Steering < LS_Angle +STEERING_BOUNDARY ) ? 0 : ( LR_Steering < LS_Angle ) ? STEERING_HOMING_SPEED: ( LR_Steering > LS_Angle )? -STEERING_HOMING_SPEED : 0;
@@ -4820,7 +4855,7 @@ void New_Steering_Controls (void)
 				
 				case WIDTH_SHRINK: 
 								
-							LS_Angle = - SHRINK_ANGLE; 
+							LS_Angle = SHRINK_ANGLE; 
 							RS_Angle = SHRINK_ANGLE; 
 							LF_Speed = (LF_Steering > LS_Angle -STEERING_BOUNDARY && LF_Steering < LS_Angle +STEERING_BOUNDARY ) ? 0 : ( LF_Steering < LS_Angle ) ? STEERING_HOMING_SPEED: ( LF_Steering > LS_Angle ) ? -STEERING_HOMING_SPEED : 0;
 							LR_Speed = (LR_Steering > LS_Angle -STEERING_BOUNDARY && LR_Steering < LS_Angle +STEERING_BOUNDARY ) ? 0 : ( LR_Steering < LS_Angle ) ? STEERING_HOMING_SPEED: ( LR_Steering > LS_Angle ) ? -STEERING_HOMING_SPEED : 0;
@@ -5277,97 +5312,97 @@ void UART_tx(void) {
 }
 	else if(Mode==3){
 		
-		if (HAL_GetTick() - Flaps_Tick <= 1500)
-	{
-		for (uint8_t i = 28; i < 32; i++)
-		{
-			if (Node_Id[i] == Node_Id_Temp[i])
-			{
-				Flaps_Disconnected = SET;
-				Node_Id_Temp[i] = Node_Id[i];
-			}
-			
-			else
-			{
-				Flaps_Disconnected = NULL;
-			}
-		}
-		Flaps_Tick = HAL_GetTick();
-	}
-	
-	if( !LR_Bush_Sensed && LF_Bush_Sensed && !RF_Bush_Sensed && !RR_Bush_Sensed)
-		{	
-//		Macro_Speed=Top_Sensing_PID(FL_Angle,NULL);
-//		Macro_Speed=(FL_Angle>=35 && FL_Angle<=45)?0:(FL_Angle<35)?-Macro_Speed:(FL_Angle>45)?Macro_Speed:0;
-		
-			Flap_Error_Left = Flaps_Target_Left - FL_LPF_Angle ;
-			Macro_Speed=-Top_Sensing_PID(Flap_Error_Left,NULL);
-			
-	}
-	else if(!LR_Bush_Sensed && !LF_Bush_Sensed && RF_Bush_Sensed && !RR_Bush_Sensed)
-		{
-			
-//		Macro_Speed=Top_Sensing_PID(FR_Angle,NULL);
-//		Macro_Speed=(FR_Angle>=35 && FR_Angle<=45)?0:(FR_Angle<35)?-Macro_Speed:(FR_Angle>45)?Macro_Speed:0;
-	
-	    Flap_Error_Right = Flaps_Target_Right - FR_LPF_Angle ;
-			Macro_Speed=-Top_Sensing_PID(Flap_Error_Right,NULL);
+//		if (HAL_GetTick() - Flaps_Tick <= 1500)
+//	{
+//		for (uint8_t i = 28; i < 32; i++)
+//		{
+//			if (Node_Id[i] == Node_Id_Temp[i])
+//			{
+//				Flaps_Disconnected = SET;
+//				Node_Id_Temp[i] = Node_Id[i];
+//			}
+//			
+//			else
+//			{
+//				Flaps_Disconnected = NULL;
+//			}
+//		}
+//		Flaps_Tick = HAL_GetTick();
+//	}
+//	
+//	if( !LR_Bush_Sensed && LF_Bush_Sensed && !RF_Bush_Sensed && !RR_Bush_Sensed)
+//		{	
+////		Macro_Speed=Top_Sensing_PID(FL_Angle,NULL);
+////		Macro_Speed=(FL_Angle>=35 && FL_Angle<=45)?0:(FL_Angle<35)?-Macro_Speed:(FL_Angle>45)?Macro_Speed:0;
+//		
+//			Flap_Error_Left = Flaps_Target_Left - FL_LPF_Angle ;
+//			Macro_Speed=-Top_Sensing_PID(Flap_Error_Left,NULL);
+//			
+//	}
+//	else if(!LR_Bush_Sensed && !LF_Bush_Sensed && RF_Bush_Sensed && !RR_Bush_Sensed)
+//		{
+//			
+////		Macro_Speed=Top_Sensing_PID(FR_Angle,NULL);
+////		Macro_Speed=(FR_Angle>=35 && FR_Angle<=45)?0:(FR_Angle<35)?-Macro_Speed:(FR_Angle>45)?Macro_Speed:0;
+//	
+//	    Flap_Error_Right = Flaps_Target_Right - FR_LPF_Angle ;
+//			Macro_Speed=-Top_Sensing_PID(Flap_Error_Right,NULL);
 
-	}
-	else if(LR_Bush_Sensed && !RR_Bush_Sensed ){
-//		  Macro_Speed=Top_Sensing_PID(RL_Angle,NULL);
-//			Macro_Speed=(RL_Angle>=35 && RL_Angle<=45)?0:(RL_Angle<35)?-Macro_Speed:(RL_Angle>45)?Macro_Speed:0;	
-		
-		Flap_Error_LR=Flap_Target_LR-RL_LPF_Angle;
-		Macro_Speed=-Top_Sensing_PID(Flap_Error_LR,NULL);
+//	}
+//	else if(LR_Bush_Sensed && !RR_Bush_Sensed ){
+////		  Macro_Speed=Top_Sensing_PID(RL_Angle,NULL);
+////			Macro_Speed=(RL_Angle>=35 && RL_Angle<=45)?0:(RL_Angle<35)?-Macro_Speed:(RL_Angle>45)?Macro_Speed:0;	
+//		
+//		Flap_Error_LR=Flap_Target_LR-RL_LPF_Angle;
+//		Macro_Speed=-Top_Sensing_PID(Flap_Error_LR,NULL);
 
-	}	
-	else if(!LR_Bush_Sensed && RR_Bush_Sensed){
-//		Macro_Speed=Top_Sensing_PID(RR_Angle,NULL);
-//		Macro_Speed=(RR_Angle>=35 && RR_Angle<=45)?0:(RR_Angle<35)?-Macro_Speed:(RR_Angle>45)?Macro_Speed:0;
+//	}	
+//	else if(!LR_Bush_Sensed && RR_Bush_Sensed){
+////		Macro_Speed=Top_Sensing_PID(RR_Angle,NULL);
+////		Macro_Speed=(RR_Angle>=35 && RR_Angle<=45)?0:(RR_Angle<35)?-Macro_Speed:(RR_Angle>45)?Macro_Speed:0;
 
-	  	Flap_Error_RR=Flap_Target_RR-RR_LPF_Angle;
-			Macro_Speed=-Top_Sensing_PID(Flap_Error_RR,NULL);
+//	  	Flap_Error_RR=Flap_Target_RR-RR_LPF_Angle;
+//			Macro_Speed=-Top_Sensing_PID(Flap_Error_RR,NULL);
 
+//	}
+//	else if(!LR_Bush_Sensed && LF_Bush_Sensed && RF_Bush_Sensed && !RR_Bush_Sensed){
+//		
+//		Flap_Error_FAVG=Flap_Target_FAVG-Front_Angle;
+//		Macro_Speed=-Top_Sensing_PID(Flap_Error_FAVG,NULL);
+//		
+//	}
+//	else if( LR_Bush_Sensed && RR_Bush_Sensed){
+//		
+//		Flap_Error_RAVG=Flap_Target_RAVG-Rear_Angle;
+//			Macro_Speed=-Top_Sensing_PID(Flap_Error_RAVG,NULL);
+//		
+//	}
+//		else {
+//			 Macro_Speed=0;
+//		}
 	}
-	else if(!LR_Bush_Sensed && LF_Bush_Sensed && RF_Bush_Sensed && !RR_Bush_Sensed){
-		
-		Flap_Error_FAVG=Flap_Target_FAVG-Front_Angle;
-		Macro_Speed=-Top_Sensing_PID(Flap_Error_FAVG,NULL);
-		
-	}
-	else if( LR_Bush_Sensed && RR_Bush_Sensed){
-		
-		Flap_Error_RAVG=Flap_Target_RAVG-Rear_Angle;
-			Macro_Speed=-Top_Sensing_PID(Flap_Error_RAVG,NULL);
-		
-	}
-		else {
-			 Macro_Speed=0;
-		}
-	}
-	else if(Mode==2) 	{ Macro_Speed=0;	}
+	else if(Mode==1) 	{ Macro_Speed=0;	}
 else{Macro_Speed=0;}
 	
 Left_Macro_Speed = Right_Macro_Speed = Macro_Speed;
 				
-				Left_Macro_Speed = Left_Macro_Speed > 0 && Left_Macro_Motor_Count >= 280 ? 5 : Left_Macro_Speed < 0 && Left_Macro_Motor_Count <= 20 ? -5 : Left_Macro_Speed;
-				Right_Macro_Speed = Right_Macro_Speed > 0 && Right_Macro_Motor_Count  >= 280 ? 5 : Right_Macro_Speed < 0 && Right_Macro_Motor_Count <= 20 ? -5 : Right_Macro_Speed;
-				
-				Left_Macro_Speed = Left_Macro_Speed > 0 && Left_Macro_Motor_Count >= 300 ? 0 : Left_Macro_Speed < 0 && Left_Macro_Motor_Count <= 0 ? 0 : Left_Macro_Speed;
-				Right_Macro_Speed = Right_Macro_Speed > 0 && Right_Macro_Motor_Count  >= 300 ? 0 : Right_Macro_Speed < 0 && Right_Macro_Motor_Count <= 0 ? 0 : Right_Macro_Speed;
+//				Left_Macro_Speed = Left_Macro_Speed > 0 && Left_Macro_Motor_Count >= 280 ? 5 : Left_Macro_Speed < 0 && Left_Macro_Motor_Count <= 20 ? -5 : Left_Macro_Speed;
+//				Right_Macro_Speed = Right_Macro_Speed > 0 && Right_Macro_Motor_Count  >= 280 ? 5 : Right_Macro_Speed < 0 && Right_Macro_Motor_Count <= 20 ? -5 : Right_Macro_Speed;
+//				
+//				Left_Macro_Speed = Left_Macro_Speed > 0 && Left_Macro_Motor_Count >= 300 ? 0 : Left_Macro_Speed < 0 && Left_Macro_Motor_Count <= 0 ? 0 : Left_Macro_Speed;
+//				Right_Macro_Speed = Right_Macro_Speed > 0 && Right_Macro_Motor_Count  >= 300 ? 0 : Right_Macro_Speed < 0 && Right_Macro_Motor_Count <= 0 ? 0 : Right_Macro_Speed;
 	
 	  if (fabs(Right_Macro_Motor_Count - Left_Macro_Motor_Count) > max_difference)
         {
             if (fabs(Right_Macro_Motor_Count - Left_Macro_Motor_Count) > 5)
             {
-							if(Mode==1){
+							if(Mode==2){
 							 Left_Macro_Speed = Joystick != 0 ? 0 : Left_Macro_Speed;
                 Right_Macro_Speed = Joystick != 0 ? 0 : Right_Macro_Speed;}
 							
-							else if(Mode==3){
-                Left_Macro_Speed = Macro_Speed != 0 ? 0 : Left_Macro_Speed;
-                Right_Macro_Speed = Macro_Speed != 0 ? 0 : Right_Macro_Speed;}
+//							else if(Mode==3){
+//                Left_Macro_Speed = Macro_Speed != 0 ? 0 : Left_Macro_Speed;
+//                Right_Macro_Speed = Macro_Speed != 0 ? 0 : Right_Macro_Speed;}
 							
 								else {}
 									
