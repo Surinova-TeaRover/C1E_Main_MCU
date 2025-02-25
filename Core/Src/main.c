@@ -51,7 +51,7 @@
 	#define					DATA											2
 	#define					STEERING_BOUNDARY 				2
 	#define         STEERINGBOUNDARY          1
-	#define					STEERING_HOMING_SPEED	 	15
+	#define					STEERING_HOMING_SPEED	 	25
 	#define					STEERING_KP			 					5
 	#define					STEERING_MAX_VEL					50
 	
@@ -178,15 +178,15 @@ uint8_t LFD=1,LRD=2,RFD=3,RRD=4,LVert=5, RVert=6, Contour=7, LFS=8, LRS=9, RFS=1
 /* 							IMU_VARIABLES 						*/
 
 float L_Roll=0, L_Pitch=0, R_Roll=0, R_Pitch=0;
-float Left_Roll_Pos = 1.5 - 2, Right_Roll_Pos = 1.8, Right_Pitch_Pos = 6.56, Left_Pitch_Pos=15.5, Left_Column_Error =0 , Left_Col_Pos = 0;
+float Left_Roll_Pos = 1.5 - 2, Right_Roll_Pos = 1.9, Right_Pitch_Pos = 4.93, Left_Pitch_Pos=17.4, Left_Column_Error =0 , Left_Col_Pos = 0;
 bool Left_IMU_State=1, Initiate_Process=0;
 float Shear_Roll = 0, Shear_Pitch = 0;
 /* 							IMU_VARIABLES 						*/
 /* 							STEERING_VARIABLES 						*/
-uint16_t Track_Width = 1800, Min_Track_Width = 1800, Zero_Turn_Angle = 33, Wheel_Base = 900; //Track_Width = 1730, Min_Track_Width = 1730
+uint16_t Track_Width = 1800, Min_Track_Width = 1800, Zero_Turn_Angle = 27, Wheel_Base = 900; //Track_Width = 1730, Min_Track_Width = 1730
 uint16_t Steer_Angle[5];
 float LF_Steering=0, LR_Steering=0, RF_Steering=0, RR_Steering=0;	
-float LF_HomePos =9, LR_HomePos= 688 , RF_HomePos= 462 , RR_HomePos = 496;	// -->	HOME POSITIONS LF_HomePos = 190, LR_HomePos= 87 , RF_HomePos= 220 , RR_HomePos = 623;
+float LF_HomePos =9, LR_HomePos= 689 , RF_HomePos= 450 , RR_HomePos = 496;	// -->	HOME POSITIONS LF_HomePos = 190, LR_HomePos= 87 , RF_HomePos= 220 , RR_HomePos = 623;
 float LF_Speed=0, LR_Speed=0, RF_Speed=0, RR_Speed=0 , LF_Speed_Temp =0, LR_Speed_Temp =0 , RF_Speed_Temp=0, RR_Speed_Temp=0, LF_Error=0, LR_Error=0, RF_Error=0, RR_Error=0;		
 //int LF_Speed=0, LR_Speed=0, RF_Speed=0, RR_Speed=0 , LF_Speed_Temp =0, LR_Speed_Temp =0 , RF_Speed_Temp=0, RR_Speed_Temp=0;
 //float LF_Error=0, LR_Error=0, RF_Error=0, RR_Error=0;
@@ -852,9 +852,9 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 //		Left_Frame_Controls();
 		New_Steering_Controls();
 		All_Macro_Sensing();
-//		Frame_Controls();
+		Frame_Controls();
 		Dynamic_Width_Adjustment();
-//		Shearing_Motors();
+		Shearing_Motors();
 		}
 	else{Emergency_Stop();}
 
@@ -2842,18 +2842,19 @@ void Operations_Monitor(void)
 	
 	if (HAL_GetTick() - Fet_Temp_Tick >= 1000)
 	{
-		for (uint8_t i = 1; i < 5; i++)
+		
+		for (uint8_t i = 1; i < 17; i++)
 		{
-			if (FET_Temperature[i] > 90)
+			if (i != 5)
 			{
-				fet++;
+				FET_Temp_Exceeded = FET_Temperature[i] > 90 ? SET : NULL;
+				if (FET_Temp_Exceeded)
+				{
+					break;
+				}
 			}
 		}
 		
-		if (fet != 0)
-		{
-			FET_Temp_Exceeded = SET;
-		}
 		
 		Fet_Temp_Tick = HAL_GetTick();
 		fet = 0;
@@ -3031,23 +3032,7 @@ void Emergency_Stop(void)
 			Drive_Errored = NULL;
 		}
 		
-		if (FET_Temp_Exceeded == SET)
-		{
-			for (uint8_t i = 1; i < 20; i++)
-			{
-				if (FET_Temperature[i] > 90)
-				{
-					fet++;
-				}
-			}
-			
-			if (fet == 0)
-			{
-				FET_Temp_Exceeded = NULL;
-			}
-				
-			fet = 0;
-		}
+		
 		
 		if (Motor_Overloaded == SET)
 		{
@@ -3779,59 +3764,59 @@ void Shearing_Motors (void)
 	{
 		if ( Shearing == 2 )
 		{
-			if (HAL_GetTick() - Shearing_Tick >= 1500)
-			{
-				for (uint8_t i = 17; i < 20; i++)
-				{
-					
-					if (Node_Id[i] != Node_Id_Temp[i])
-					{
-						Shearing_Drive_Disconnected = NULL;
-						Node_Id_Temp[i] = Node_Id[i];
-					}
-					
-					else
-					{
-						Shearing_Drive_Disconnected = SET;
-						Set_Motor_Velocity( 17 , 0 ); 
-						Set_Motor_Velocity( 18 , 0 ); 
-						Set_Motor_Velocity( 19 , 0 );
-					}
-					
-					if (Axis_State[i] != 8)
-					{
-						Shearing_Drive_Errored = SET;
-						Set_Motor_Velocity( 17 , 0 ); 
-						Set_Motor_Velocity( 18 , 0 ); 
-						Set_Motor_Velocity( 19 , 0 ); 
-						if (HAL_GetTick() - Reboot_Tick >= 3000)
-						{
-							Reboot(i);
-							Reboot_Tick = HAL_GetTick();
-						}
-					}
-					
-					else
-					{
-						Reboot_Tick = 0;
-						Shearing_Drive_Errored = NULL;
-					}
-					
-				}
-				
-				Shearing_Tick = HAL_GetTick();
-			}
+//			if (HAL_GetTick() - Shearing_Tick >= 1500)
+//			{
+//				for (uint8_t i = 17; i < 20; i++)
+//				{
+//					
+//					if (Node_Id[i] != Node_Id_Temp[i])
+//					{
+//						Shearing_Drive_Disconnected = NULL;
+//						Node_Id_Temp[i] = Node_Id[i];
+//					}
+//					
+//					else
+//					{
+//						Shearing_Drive_Disconnected = SET;
+//						Set_Motor_Velocity( 17 , 0 ); 
+//						Set_Motor_Velocity( 18 , 0 ); 
+//						Set_Motor_Velocity( 19 , 0 );
+//					}
+//					
+//					if (Axis_State[i] != 8)
+//					{
+//						Shearing_Drive_Errored = SET;
+//						Set_Motor_Velocity( 17 , 0 ); 
+//						Set_Motor_Velocity( 18 , 0 ); 
+//						Set_Motor_Velocity( 19 , 0 ); 
+//						if (HAL_GetTick() - Reboot_Tick >= 3000)
+//						{
+//							Reboot(i);
+//							Reboot_Tick = HAL_GetTick();
+//						}
+//					}
+//					
+//					else
+//					{
+//						Reboot_Tick = 0;
+//						Shearing_Drive_Errored = NULL;
+//					}
+//					
+//				}
+//				
+//				Shearing_Tick = HAL_GetTick();
+//			}
 			
-			if (Shearing_Drive_Errored == NULL && Shearing_Drive_Disconnected == NULL)
-			{
+			//if (Shearing_Drive_Errored == NULL && Shearing_Drive_Disconnected == NULL)
+			//{
 					for ( int i=0; i < 5; i++)
 					{			
-						Set_Motor_Velocity( 17 , 20 ); HAL_Delay(10); // SELECTIVE
-						Set_Motor_Velocity( 18 , 20 ); HAL_Delay(10); // MAIN PADDLE
-						Set_Motor_Velocity( 19 , 20 ); HAL_Delay(10);	// SIDE PADDLE
+						Set_Motor_Velocity( 17 , 20 ); //HAL_Delay(10); // SELECTIVE
+						Set_Motor_Velocity( 18 , 20 );// HAL_Delay(10); // MAIN PADDLE
+						Set_Motor_Velocity( 19 , 20 ); //HAL_Delay(10);	// SIDE PADDLE
 						//Set_Motor_Velocity( 20 , 20 ); 							// CUTTER
 					}
-			}
+			//}
 		}
 		else 
 		{	
