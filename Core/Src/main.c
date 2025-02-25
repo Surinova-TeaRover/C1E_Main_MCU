@@ -331,7 +331,7 @@ float Flap_Error_LR = 0, Flap_Target_LR = 0, Flap_Error_RR = 0, Flap_Target_RR =
 
 float Left_Macro_Speed = 0, Right_Macro_Speed = 0, Left_Macro_Speed_Temp = 0, Right_Macro_Speed_Temp = 0;
 float Left_Macro_Count = 0, Right_Macro_Count = 0, Macro_Error = 0, Macro_Kp = 1, Correction_Speed = 0;
-uint8_t max_difference = 3;
+uint8_t max_difference = 1;
 
 float M_Error_Change = 0, M_Prev_Error = 0, M_Error_Slope = 0, M_Error_Area = 0;
 float M_P = 0, M_I = 0, M_D = 0, M_Kp = 0, M_Ki = 0, M_Kd = 0;
@@ -796,7 +796,7 @@ int main(void)
 //HAL_Delay(2000);
 //EEPROM_Read(25,0, (uint8_t *)Test_Read,sizeof(Test_Read));
 								
-	
+	Prev_Write_Value[0] = 0xFE;
 
 //Lower_Width_Motor_Value = 0;	
 //Upper_Width_Motor_Value = 0;
@@ -805,8 +805,8 @@ int main(void)
 //Left_Macro_Motor_Value = 0;
 //Right_Macro_Motor_Value = 0;
 
-	//Read_EEPROM_Data();	
-
+// Read_EEPROM_Data();	
+for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}	
 //for (uint8_t i = 1; i < 21; i++)
 //{
 //	if (Read_Value[i] == 0)
@@ -843,7 +843,7 @@ int main(void)
 		test++;
 		BT_State = BT_READ;
 		Joystick_Reception();
-		//EEPROM_Store_Data();
+		EEPROM_Store_Data();
 		Operations_Monitor();
 		
 		if(OPERATION_MONITOR_FLAG==NULL)
@@ -852,7 +852,7 @@ int main(void)
 //		Left_Frame_Controls();
 		New_Steering_Controls();
 		All_Macro_Sensing();
-		Frame_Controls();
+//		Frame_Controls();
 		Dynamic_Width_Adjustment();
 //		Shearing_Motors();
 		}
@@ -1350,7 +1350,7 @@ void CAN_Transmit ( uint8_t NODE, uint8_t Command, float Tx_Data,	uint8_t Data_S
 
 	}
 //	
-		for ( uint8_t i=0 ; i<5; i++ ) //1
+		for ( uint8_t i=0 ; i<2; i++ ) //1
 	{
 
 				HAL_CAN_AddTxMessage(&hcan2, &TxHeader, TxData, &TxMailbox); 
@@ -1461,17 +1461,14 @@ void Read_EEPROM_Data(void)
 					
 //	EEPROM_PageErase (3);				
 	EEPROM_Read(60, 0, (uint8_t *)Read_Value, sizeof(Read_Value));
-//	EEPROM_Read(6, 0, (uint8_t *)Read_Value_1, sizeof(Read_Value_1));
-//	memcpy(&Lower_Width_Motor_Value, &Read_Value[28],4 );	 				
-//	memcpy(&Upper_Width_Motor_Value, &Read_Value[4],4 );
-	memcpy(&Vertical_Motor_Value, &Read_Value[1],4 );
+
+	//memcpy(&Vertical_Motor_Value, &Read_Value[1],4 );
 	memcpy(&Left_Macro_Motor_Value, &Read_Value[5],4 );
 	memcpy(&Right_Macro_Motor_Value, &Read_Value[9],4 );
 	//memcpy(&Pitch_Arm_Motor_Value, &Read_Value[13],4 );
 	memcpy(&Lower_Width_Motor_Value, &Read_Value[13],4 );
 	memcpy(&Upper_Width_Motor_Value, &Read_Value[17],4 );
-//	memcpy(&Right_Vertical_Motor_Value, &Read_Value[20],4 );
-//	memcpy(&Contour_Motor_Value, &Read_Value[24],4 );
+
 	
 	
 //	if(Read_Value[0]>=600) 
@@ -3374,47 +3371,41 @@ float Pitch_Arm_PID ( float Pitch_Error , unsigned long long 	R_Time_Stamp )
 }
 void EEPROM_Store_Data (void)
 {
-	Vertical_Motor_Count = Vertical_Motor_Value + Absolute_Position_Float[6];
+	//Vertical_Motor_Count = Vertical_Motor_Value + Absolute_Position_Float[6];
 	Left_Macro_Motor_Count = Left_Macro_Motor_Value + Absolute_Position_Float[12];
 	Right_Macro_Motor_Count = Right_Macro_Motor_Value + Absolute_Position_Float[13];
 	//Pitch_Arm_Motor_Count = Pitch_Arm_Motor_Value + Absolute_Position_Float[14];
 	Lower_Width_Motor_Count = Lower_Width_Motor_Value + Absolute_Position_Float[15];
 	Upper_Width_Motor_Count = Upper_Width_Motor_Value + Absolute_Position_Float[16];
-//	memcpy(&Write_Value[0], &Start_Value, sizeof(Start_Value));
-//	memcpy(&Write_Value[32], &Start_Value, sizeof(End_Value));
-//	memcpy(&Write_Value[28], &Lower_Width_Motor_Count, sizeof(Lower_Width_Motor_Count));
-//	memcpy(&Write_Value[4], &Upper_Width_Motor_Count, sizeof(Upper_Width_Motor_Count));
-	
-//	Left_Arm_Motor_Count  = Left_Arm_Motor_Value + Absolute_Position_Int[12];
-//	Right_Arm_Motor_Count = Right_Arm_Motor_Value + Absolute_Position_Int[13];
-//	Pitch_Arm_Motor_Count = Pitch_Arm_Motor_Value + Absolute_Position_Int[14];	
+
 																																																											
-	memcpy(&Write_Value[1], &Vertical_Motor_Count, sizeof(Vertical_Motor_Count));
+	//memcpy(&Write_Value[1], &Vertical_Motor_Count, sizeof(Vertical_Motor_Count));
 	memcpy(&Write_Value[5], &Left_Macro_Motor_Count, sizeof(Left_Macro_Motor_Count));
 	memcpy(&Write_Value[9], &Right_Macro_Motor_Count, sizeof(Right_Macro_Motor_Count));
 	//memcpy(&Write_Value[13], &Pitch_Arm_Motor_Count, sizeof(Pitch_Arm_Motor_Count));
 	memcpy(&Write_Value[13], &Lower_Width_Motor_Count, sizeof(Lower_Width_Motor_Count));
 	memcpy(&Write_Value[17], &Upper_Width_Motor_Count, sizeof(Upper_Width_Motor_Count));
-//	Right_Vertical_Motor_Count = Right_Vertical_Motor_Value + Absolute_Position_Int[6];
-//	Contour_Motor_Count = Contour_Motor_Value + Absolute_Position_Int[7];	
-//	memcpy(&Write_Value[20], &Right_Vertical_Motor_Count, sizeof(Right_Vertical_Motor_Count));
-//	memcpy(&Write_Value[24], &Contour_Motor_Count, sizeof(Contour_Motor_Count));
+
 	
 //	
-		for(uint8_t i = 1; i < 21; i++)
+		for(uint8_t i = 0; i < 21; i++)
 		{
-			if(Prev_Write_Value[i] != Write_Value[i])
+			if ( !Store_Data)
 			{
-				Store_Data= 1;
-				Prev_Write_Value[i] = Write_Value[i];
+				if(Prev_Write_Value[i] != Write_Value[i])
+				{
+					Store_Data= 1;
+					Prev_Write_Value[i] = Write_Value[i];
+				}
+				else Store_Data = 0;
 			}
-			else Store_Data = 0;
 		}
 		
 		
 		if ( Store_Data)
 		{
 			EEPROM_Write(60, 0, (uint8_t *)Write_Value, sizeof(Write_Value)); //HAL_Delay(10);
+			Store_Data = 0;
 		}
 		
 		Lead_Screw_Length = Vertical_Motor_Count * 0.5;      
@@ -3702,7 +3693,7 @@ void Dynamic_Width_Adjustment (void)
 	//float Width_Speed=46.5/2 - 5;
 	float Width_Speed= 40;
 	
-	if ( !Steering_Reset_Flag  && Steering_Mode >= 4 )
+	if ( !Steering_Reset_Flag  && Steering_Mode >= 4 && Rover_Velocity > 10 )
 	{
 		if ( Steering_Mode == WIDTH_SHRINK && Angle_Ready ) 
 		{
@@ -3741,6 +3732,9 @@ void Dynamic_Width_Adjustment (void)
 //		Width_Correction_Speed = Width_Correction_Speed >= 40 ? 40 : Width_Correction_Speed < -40 ? -40 : Width_Correction_Speed;
 //		Upper_Width_Motor_Speed = Upper_Width_Motor_Speed + Width_Correction_Speed;
 //	}
+	
+		Lower_Width_Motor_Speed = Lower_Width_Motor_Speed < 0 && Lower_Width_Motor_Count <= 0 ? 0 : Lower_Width_Motor_Speed > 0 && Lower_Width_Motor_Count >= 600 ? 0 : Lower_Width_Motor_Speed;
+		Upper_Width_Motor_Speed = Upper_Width_Motor_Speed < 0 && Upper_Width_Motor_Count  <= 0 ? 0 : Upper_Width_Motor_Speed > 0 && Upper_Width_Motor_Count >= 600 ? 0 : Upper_Width_Motor_Speed;
 	//Lower_Width_Motor_Speed=(( Lower_Width_Motor_Speed < 0) && (Lower_Width_Motor_Count<=-550  )) ? -10:(( Lower_Width_Motor_Speed > 0) && ( Lower_Width_Motor_Count >= -50 ))?10:Lower_Width_Motor_Speed;
 	//if (( Lower_Width_Motor_Speed < 0) && (( Lower_Width_Motor_Count >= -605 && Lower_Width_Motor_Count<=-595  )|| Lower_Width_Motor_Count <= -605)) Lower_Width_Motor_Speed = 0;
 	//else if (( Lower_Width_Motor_Speed > 0) && (( Lower_Width_Motor_Count >=-5 && Lower_Width_Motor_Count<=5 )||Lower_Width_Motor_Count>=5 )) Lower_Width_Motor_Speed = 0;
@@ -3772,6 +3766,7 @@ void Dynamic_Width_Adjustment (void)
 
 void Dynamic_Width_Corrections(void)
 {
+	
 	Half_Track_Width = (Track_Width + (Lower_Width_Motor_Count * 0.25)) / 2;
 	Half_Wheel_Base = Wheel_Base / 2;
 	Zero_Turn_Angle = atan(Half_Wheel_Base / Half_Track_Width);
@@ -4223,8 +4218,8 @@ void Drive_Wheel_Controls_Vel_Based(void)
 		Right_Vel_Limit = Vel_Limit + Right_Steering_Speed;
 
 		
-	if (Steering_Mode < 4)
-	{
+//	if (Steering_Mode < 4)
+//	{
 	if(Left_Vel_Limit != Left_Transmit_Vel)
 		{
 				Accel_Sync = fabs(Right_Vel_Limit - Right_Transmit_Vel);
@@ -4286,42 +4281,42 @@ void Drive_Wheel_Controls_Vel_Based(void)
 				}
 			}
 
-		}
+	//	}
 			
-		else
-		{
-			Left_Transmit_Vel = Left_Vel_Limit;
-			Right_Transmit_Vel = Right_Vel_Limit;
-			
-			
-			
-				if (Left_Transmit_Vel != Left_Transmit_Vel_Temp)
-				{
-					Input_Velocity[1] = Left_Transmit_Vel;
-					Input_Velocity[2] = Left_Transmit_Vel;
-					
-					for(uint8_t i=1 ; i <= 2 ; i++)
-					{
-						Set_Motor_Velocity(i, Left_Transmit_Vel);
-					}
-					Left_Transmit_Vel_Temp = Left_Transmit_Vel;
-				}
-			
-			
-			 
-				if (Right_Transmit_Vel != Right_Transmit_Vel_Temp)
-				{
-					Input_Velocity[3] = Right_Transmit_Vel;
-					Input_Velocity[4] = Right_Transmit_Vel;
-					
-					for(uint8_t i=3 ; i <= 4 ; i++) 
-					{
-						Set_Motor_Velocity(i, Right_Transmit_Vel);
-					}
-					Right_Transmit_Vel_Temp = Right_Transmit_Vel;
-				}
-			
-		}
+//		else
+//		{
+//			Left_Transmit_Vel = Left_Vel_Limit;
+//			Right_Transmit_Vel = Right_Vel_Limit;
+//			
+//			
+//			
+//				if (Left_Transmit_Vel != Left_Transmit_Vel_Temp)
+//				{
+//					Input_Velocity[1] = Left_Transmit_Vel;
+//					Input_Velocity[2] = Left_Transmit_Vel;
+//					
+//					for(uint8_t i=1 ; i <= 2 ; i++)
+//					{
+//						Set_Motor_Velocity(i, Left_Transmit_Vel);
+//					}
+//					Left_Transmit_Vel_Temp = Left_Transmit_Vel;
+//				}
+//			
+//			
+//			 
+//				if (Right_Transmit_Vel != Right_Transmit_Vel_Temp)
+//				{
+//					Input_Velocity[3] = Right_Transmit_Vel;
+//					Input_Velocity[4] = Right_Transmit_Vel;
+//					
+//					for(uint8_t i=3 ; i <= 4 ; i++) 
+//					{
+//						Set_Motor_Velocity(i, Right_Transmit_Vel);
+//					}
+//					Right_Transmit_Vel_Temp = Right_Transmit_Vel;
+//				}
+//			
+//		}
 			
 			
 	}	
@@ -5302,8 +5297,8 @@ void UART_tx(void) {
             switch (Joystick)
             {
                 case 0: Macro_Speed = 0;   break;
-                case 1: Macro_Speed = -20;  break;
-                case 2: Macro_Speed = 20; break;
+                case 1: Macro_Speed = 20;  break;
+                case 2: Macro_Speed = -20; break;
                 default: Macro_Speed = 0;  break;
             }
             Joystick_Temp = Joystick;
@@ -5386,50 +5381,53 @@ else{Macro_Speed=0;}
 	
 Left_Macro_Speed = Right_Macro_Speed = Macro_Speed;
 				
-//				Left_Macro_Speed = Left_Macro_Speed > 0 && Left_Macro_Motor_Count >= 280 ? 5 : Left_Macro_Speed < 0 && Left_Macro_Motor_Count <= 20 ? -5 : Left_Macro_Speed;
-//				Right_Macro_Speed = Right_Macro_Speed > 0 && Right_Macro_Motor_Count  >= 280 ? 5 : Right_Macro_Speed < 0 && Right_Macro_Motor_Count <= 20 ? -5 : Right_Macro_Speed;
+//				Left_Macro_Speed = Left_Macro_Speed > 0 && Left_Macro_Motor_Count >= -30 ? 5 : Left_Macro_Speed < 0 && Left_Macro_Motor_Count <= -170 ? -5 : Left_Macro_Speed;
+//				Right_Macro_Speed = Right_Macro_Speed > 0 && Right_Macro_Motor_Count  >= -30 ? 5 : Right_Macro_Speed < 0 && Right_Macro_Motor_Count <= 170 ? -5 : Right_Macro_Speed;
 //				
-//				Left_Macro_Speed = Left_Macro_Speed > 0 && Left_Macro_Motor_Count >= 300 ? 0 : Left_Macro_Speed < 0 && Left_Macro_Motor_Count <= 0 ? 0 : Left_Macro_Speed;
-//				Right_Macro_Speed = Right_Macro_Speed > 0 && Right_Macro_Motor_Count  >= 300 ? 0 : Right_Macro_Speed < 0 && Right_Macro_Motor_Count <= 0 ? 0 : Right_Macro_Speed;
+				Left_Macro_Speed = Left_Macro_Speed > 0 && Left_Macro_Motor_Count >= 0 ? 0 : Left_Macro_Speed < 0 && Left_Macro_Motor_Count <= -300 ? 0 : Left_Macro_Speed;
+				Right_Macro_Speed = Right_Macro_Speed > 0 && Right_Macro_Motor_Count  >= 0 ? 0 : Right_Macro_Speed < 0 && Right_Macro_Motor_Count <= -300 ? 0 : Right_Macro_Speed;
 	
-	  if (fabs(Right_Macro_Motor_Count - Left_Macro_Motor_Count) > max_difference)
-        {
-            if (fabs(Right_Macro_Motor_Count - Left_Macro_Motor_Count) > 5)
-            {
-							if(Mode==2){
-							 Left_Macro_Speed = Joystick != 0 ? 0 : Left_Macro_Speed;
-                Right_Macro_Speed = Joystick != 0 ? 0 : Right_Macro_Speed;}
-							
+	  if (fabs(fabs(Right_Macro_Motor_Count) - fabs(Left_Macro_Motor_Count)) > max_difference)
+		{
+				if (fabs(fabs(Right_Macro_Motor_Count) - fabs(Left_Macro_Motor_Count)) > 10)
+				{
+					if(Mode==2)
+					{
+					 Left_Macro_Speed = Joystick != 0 ? 0 : Left_Macro_Speed;
+					 Right_Macro_Speed = Joystick != 0 ? 0 : Right_Macro_Speed;
+					}
+					
 //							else if(Mode==3){
 //                Left_Macro_Speed = Macro_Speed != 0 ? 0 : Left_Macro_Speed;
 //                Right_Macro_Speed = Macro_Speed != 0 ? 0 : Right_Macro_Speed;}
+					
+						else {}
 							
-								else {}
-									
-            }
-            Macro_Error = Right_Macro_Motor_Count - Left_Macro_Motor_Count; 
-            Correction_Speed = Macro_Error * Macro_Kp;
-            Correction_Speed = Correction_Speed < 2 && Correction_Speed > -2 ? 0 : Correction_Speed;
-            Correction_Speed = Correction_Speed > 10 ? 10 : Correction_Speed < -10 ? -10 : Correction_Speed;
-        }
-        else 
-        {
-            Correction_Speed = 0;
-        }
+				}
+				Macro_Error = Right_Macro_Motor_Count - Left_Macro_Motor_Count; 
+				//Macro_Error = -Macro_Error;
+				Correction_Speed = Macro_Error < 2 && Macro_Error > -2 ? 0 : (Macro_Error * Macro_Kp);
+//           Correction_Speed = Correction_Speed < 2 && Correction_Speed > -2 ? 0 : Correction_Speed;
+				Correction_Speed = Correction_Speed > 10 ? 10 : Correction_Speed < -10 ? -10 : Correction_Speed;
+		}
+		else 
+		{
+				Correction_Speed = 0;
+		}
         Left_Macro_Speed = Left_Macro_Speed + Correction_Speed;
 	
-if (Left_Macro_Speed_Temp != Left_Macro_Speed)
-    {
-				Input_Velocity[12] = Left_Macro_Speed;
-        Set_Motor_Velocity(12, Left_Macro_Speed);
-        Left_Macro_Speed_Temp = Left_Macro_Speed;
-    }
-if (Right_Macro_Speed_Temp != Right_Macro_Speed)
-    {
-				Input_Velocity[13] = Right_Macro_Speed;
-				Set_Motor_Velocity(13, Right_Macro_Speed);
-				Right_Macro_Speed_Temp = Right_Macro_Speed;
-    }
+	if (Left_Macro_Speed_Temp != Left_Macro_Speed)
+	{
+			Input_Velocity[12] = Left_Macro_Speed;
+			Set_Motor_Velocity(12, Left_Macro_Speed);
+			Left_Macro_Speed_Temp = Left_Macro_Speed;
+	}
+	if (Right_Macro_Speed_Temp != Right_Macro_Speed)
+	{
+			Input_Velocity[13] = Right_Macro_Speed;
+			Set_Motor_Velocity(13, Right_Macro_Speed);
+			Right_Macro_Speed_Temp = Right_Macro_Speed;
+	}
 
 }
  
