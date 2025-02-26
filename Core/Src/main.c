@@ -848,12 +848,12 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 		
 		if(OPERATION_MONITOR_FLAG==NULL)
 		{
-		Drive_Wheel_Controls_Vel_Based();
+//		Drive_Wheel_Controls_Vel_Based();
 //		Left_Frame_Controls();
-		New_Steering_Controls();
-		All_Macro_Sensing();
-		Frame_Controls();
-		Dynamic_Width_Adjustment();
+//		New_Steering_Controls();
+//		All_Macro_Sensing();
+//		Frame_Controls();
+//		Dynamic_Width_Adjustment();
 		Shearing_Motors();
 		}
 	else{Emergency_Stop();}
@@ -2802,7 +2802,7 @@ void Operations_Monitor(void)
 	{
 		for (uint8_t i = 1; i < 17; i++)
 		{
-			if (i != 5)
+			if (i != 5 || i != 17)
 			{
 				if (Node_Id[i] == Node_Id_Temp[i]) 
 				{
@@ -3764,11 +3764,11 @@ void Shearing_Motors (void)
 	{
 		if ( Shearing == 2 )
 		{
-//			if (HAL_GetTick() - Shearing_Tick >= 1500)
-//			{
-//				for (uint8_t i = 17; i < 20; i++)
-//				{
-//					
+			if (HAL_GetTick() - Shearing_Tick >= 1500)
+			{
+				for (uint8_t i = 18; i <= 20; i++)
+				{
+					
 //					if (Node_Id[i] != Node_Id_Temp[i])
 //					{
 //						Shearing_Drive_Disconnected = NULL;
@@ -3782,48 +3782,48 @@ void Shearing_Motors (void)
 //						Set_Motor_Velocity( 18 , 0 ); 
 //						Set_Motor_Velocity( 19 , 0 );
 //					}
-//					
-//					if (Axis_State[i] != 8)
-//					{
-//						Shearing_Drive_Errored = SET;
-//						Set_Motor_Velocity( 17 , 0 ); 
-//						Set_Motor_Velocity( 18 , 0 ); 
-//						Set_Motor_Velocity( 19 , 0 ); 
-//						if (HAL_GetTick() - Reboot_Tick >= 3000)
-//						{
-//							Reboot(i);
-//							Reboot_Tick = HAL_GetTick();
-//						}
-//					}
-//					
-//					else
-//					{
-//						Reboot_Tick = 0;
-//						Shearing_Drive_Errored = NULL;
-//					}
-//					
-//				}
-//				
-//				Shearing_Tick = HAL_GetTick();
-//			}
+					
+					if (Axis_State[i] != 8)
+					{
+						Shearing_Drive_Errored = SET;
+						Set_Motor_Velocity( 20 , 0 ); 
+						Set_Motor_Velocity( 18 , 0 ); 
+						Set_Motor_Velocity( 19 , 0 ); 
+						if (HAL_GetTick() - Reboot_Tick >= 3000)
+						{
+							Reboot(i);
+							Reboot_Tick = HAL_GetTick();
+						}
+					}
+					
+					else
+					{
+						Reboot_Tick = 0;
+						Shearing_Drive_Errored = NULL;
+					}
+					
+				}
+				
+				Shearing_Tick = HAL_GetTick();
+			}
 			
-			//if (Shearing_Drive_Errored == NULL && Shearing_Drive_Disconnected == NULL)
-			//{
-					for ( int i=0; i < 5; i++)
+			if (Shearing_Drive_Errored == NULL && Shearing_Drive_Disconnected == NULL)
+			{
+					for ( int i=0; i < 2; i++)
 					{			
-						Set_Motor_Velocity( 17 , 20 ); //HAL_Delay(10); // SELECTIVE
-						Set_Motor_Velocity( 18 , 20 );// HAL_Delay(10); // MAIN PADDLE
+						Set_Motor_Velocity( 18 , 30 );// HAL_Delay(10); // SELECTIVE
+						Set_Motor_Velocity( 20 , 20 );// HAL_Delay(10); // MAIN PADDLE
 						Set_Motor_Velocity( 19 , 20 ); //HAL_Delay(10);	// SIDE PADDLE
 						//Set_Motor_Velocity( 20 , 20 ); 							// CUTTER
 					}
-			//}
+			}
 		}
 		else 
 		{	
 			for ( int i=0; i < 4 ; i++)
 			{
-				Set_Motor_Velocity( 17 , 0 ); 
 				Set_Motor_Velocity( 18 , 0 ); 
+				Set_Motor_Velocity( 20 , 0 ); 
 				Set_Motor_Velocity( 19 , 0 ); 
 				//Set_Motor_Velocity( 20 , 0 );				
 			}
