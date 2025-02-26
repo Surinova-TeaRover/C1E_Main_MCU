@@ -168,7 +168,7 @@ uint8_t RxData2[8];
 uint8_t RxData2_Temp[8];
 uint8_t RxData_Temp[8];
 uint32_t TxMailbox, CAN_Count=0;
-uint8_t Node_Id[40],PREV_Node_Id[40], Received_Node_Id=0, Received_Command_Id=0;
+uint8_t Node_Id[30],PREV_Node_Id[40], Received_Node_Id=0, Received_Command_Id=0;
 uint8_t Sensor_Id[10], Axis_State[30];
 float Motor_Velocity[20], Rover_Voltage=0,Motor_Current[20], Rover_Voltage_Temp=0;uint8_t Motor_Error[20], Encoder_Error[20] , Volt_Tx=0, Volt_Tx_Temp=0;
 uint8_t LFD=1,LRD=2,RFD=3,RRD=4,LVert=5, RVert=6, Contour=7, LFS=8, LRS=9, RFS=10, RRS=11, L_Arm=12, R_Arm=13, P_Arm=14 , Upper_Width =16 , Lower_Width = 15, Cutter=17, Side_Belt = 18, Selective = 19, Paddle =20;
@@ -178,7 +178,8 @@ uint8_t LFD=1,LRD=2,RFD=3,RRD=4,LVert=5, RVert=6, Contour=7, LFS=8, LRS=9, RFS=1
 /* 							IMU_VARIABLES 						*/
 
 float L_Roll=0, L_Pitch=0, R_Roll=0, R_Pitch=0;
-float Left_Roll_Pos = 1.5 - 2, Right_Roll_Pos = 1.9, Right_Pitch_Pos = 4.93, Left_Pitch_Pos=17.4, Left_Column_Error =0 , Left_Col_Pos = 0;
+float Left_Roll_Pos = 1.5 - 2, Right_Roll_Pos = 1.25, Right_Pitch_Pos = 3.75, Left_Pitch_Pos=17.4, Left_Column_Error =0 , Left_Col_Pos = 0;
+//float Left_Roll_Pos = 1.5 - 2, Right_Roll_Pos = 1.9, Right_Pitch_Pos = 4.93, Left_Pitch_Pos=17.4, Left_Column_Error =0 , Left_Col_Pos = 0;
 bool Left_IMU_State=1, Initiate_Process=0;
 float Shear_Roll = 0, Shear_Pitch = 0;
 /* 							IMU_VARIABLES 						*/
@@ -294,7 +295,7 @@ float Rover_Velocity = 0.0;
 
 bool JOYSTICK_STATE_FLAG = NULL, AXIS_STATE_FLAG = SET, HEARTBEAT_FLAG = SET, FET_TEMP_FLAG = SET, OPERATION_MONITOR_FLAG = NULL, MOTORS_STOP_FLAG = SET;
 uint64_t Tick_Count1 = 0, Tick_Count2 = 0;
-uint16_t Node_Id_Temp[30];
+uint8_t Node_Id_Temp[30];
 // FET_Temperature[21];
 int Node = 0, fet = 0;
 
@@ -408,6 +409,7 @@ float Main_Bt_Percentage = 0;
 char outputBuffer[1024],Main_Battery[42],Left_IMU_Data[50],Right_IMU_Data[50],Pitch_IMU_Data[50];
 char Node_ID_To_Name[][10]={"","LCW","RFW","RRW","R_Vert","L_Contour","R_Contour","RFS","RRS","","","PitchArm","L_Macro","R_Macro","Width"};
 float LF = 0, LR = 0;
+int err_count = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -798,6 +800,11 @@ int main(void)
 								
 	Prev_Write_Value[0] = 0xFE;
 
+
+
+// Read_EEPROM_Data();	
+for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}	
+
 //Lower_Width_Motor_Value = 0;	
 //Upper_Width_Motor_Value = 0;
 //Vertical_Motor_Value=0;
@@ -805,8 +812,6 @@ int main(void)
 //Left_Macro_Motor_Value = 0;
 //Right_Macro_Motor_Value = 0;
 
-// Read_EEPROM_Data();	
-for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}	
 //for (uint8_t i = 1; i < 21; i++)
 //{
 //	if (Read_Value[i] == 0)
@@ -848,12 +853,12 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 		
 		if(OPERATION_MONITOR_FLAG==NULL)
 		{
-//		Drive_Wheel_Controls_Vel_Based();
-//		Left_Frame_Controls();
-//		New_Steering_Controls();
-//		All_Macro_Sensing();
-//		Frame_Controls();
-//		Dynamic_Width_Adjustment();
+		Drive_Wheel_Controls_Vel_Based();
+//////		Left_Frame_Controls();
+		New_Steering_Controls();
+		All_Macro_Sensing();
+		Frame_Controls();
+		Dynamic_Width_Adjustment();
 		Shearing_Motors();
 		}
 	else{Emergency_Stop();}
@@ -1378,16 +1383,6 @@ return (output/2);
 output = (output<-(359.0/2))?(output+(720.0/2)):(output);
 return (output);*/
 }
-
-//float Flap_Sensor_Pos(double Sensor_Value, double Zero_Pos)
-//{
-//double output;
-
-//output=((Sensor_Value-Zero_Pos)>180.0)? ((Sensor_Value-Zero_Pos)-360.0) : (Sensor_Value-Zero_Pos);
-//output = (output<-179.0)?(output+360.0):(output);
-//return (output);
-//}
-
 void Start_Calibration_For (int axis_id, int command_id, uint8_t loop_times)
 {
 				memcpy(TxData, &command_id, 4);		
@@ -1551,15 +1546,17 @@ void Joystick_Reception(void)
 	}
 	else{  E_Stop = NULL; speed_time = HAL_GetTick();	}
 	
-	if (HAL_GetTick() - Joystick_Tick >= 1000)
-	{
-			Joystick_Disconnected = Heartbeat == Heartbeat_Temp ? SET : NULL;
-			Heartbeat_Temp = Heartbeat;
 	
-		Joystick_Tick = HAL_GetTick();
-	}
 	}
 	else {}
+		
+		
+	if (HAL_GetTick() - Joystick_Tick >= 1000)
+	{
+		Joystick_Disconnected = Heartbeat == Heartbeat_Temp ? SET : NULL;
+		Heartbeat_Temp = Heartbeat;
+		Joystick_Tick = HAL_GetTick();
+	}
 		
 //	//Rover_Voltage = 54;
 //	if((HAL_GetTick() - Timt_Batt) >= 3000)
@@ -1941,194 +1938,7 @@ void Transmit_Motor_Torque (void)
 		}
 		Prev_Joystick = Joystick;
 }
-
-//void New_Drive_Controls(void)
-//{
-//	if ( (Speed!= 0) && Left_IMU_State  ) //&& (Steering_Mode!= 1) )//&& (BT_State))   // mode == 2 added
-//	{
-////		Vel_Limit = Speed*15;
-////		Vel_Limit = Vel_Limit > 50 ? 50 : Vel_Limit < 10 ? 10 : Vel_Limit;
-
-//		if ( (R_R_Err > 6 || R_R_Err < -6) || (C_Err > 6 || C_Err < -6) || (Left_Vertical_Error > 6 || Left_Vertical_Error < -6) ){ Joystick = 0;}// Stop_Motors(); }// Safety STOP  (L_R_Err > 5 || L_R_Err < -5)
-//	
-//		if ( Joystick == 1 )
-//		{
-//		if ( Motor_Velocity[3] > 10 ) Vel_Limit = Speed*15;
-//		}
-//		else if ( Joystick == 2 )
-//		{
-//		if ( Motor_Velocity[3] < -10 ) Vel_Limit = Speed*15;
-//		}
-//		
-//		Vel_Limit = Joystick == 0 ? 10 : Vel_Limit;   //15
-//		
-//		if ( Steering_Mode != ALL_WHEEL ){ Left_Steering_Speed = Right_Steering_Speed = 0; }
-//	//		Left_Frame_Speed=0;
-//			Left_Vel_Limit = Vel_Limit  + Left_Steering_Speed + Left_Frame_Speed+4;
-//			Right_Vel_Limit = Vel_Limit + Right_Steering_Speed+4;
-//	/////////////////////////////////////////////////////////////////////////APPLYING TORQUE/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////		if ( Motor_Velocity[3] < 10 && Motor_Velocity[3] > -10 )
-////		{
-////		Transmit_Motor_Torque();
-////		}
-//		
-//			
-//				if (Joystick == 1 || Joystick == 2)
-//				{
-//					if (Joystick != Joystick_Temp)
-//					{
-//						Transmit_Motor_Torque();
-//						Joystick_Temp = Joystick;
-//						//FLAG = SET;
-//					}
-//				}
-//				
-//				if (Joystick == 0)
-//				{
-//					//if ((Motor_Velocity[1] <= Left_Vel_Limit + 2 && Motor_Velocity[1] >= Left_Vel_Limit - 2) && (Motor_Velocity[3] <= Right_Vel_Limit + 2 && Motor_Velocity[3] >= Right_Vel_Limit - 2))
-//					//{
-//						Transmit_Motor_Torque();
-//						//FLAG = NULL;
-//					//}
-//				}
-//				
-//				
-//					
-//				
-//			
-//			
-//		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////		Transmit_Motor_Torque();
-//		
-///*	
-////		if ( Joystick_Temp != Joystick )
-////		{
- ////			switch (Joystick)
-////			{
-////				case 0 :   Torque = NULL; 							break;								
-////				case 1 :   Torque =	Wheel_Torque;				break; 
-////				case 2 :   Torque =-Wheel_Torque;				break; 
-////				default :																break;
-////			}
-////			Joystick_Temp = Joystick;
-////		}
-////		
-////		if ( Torque_Temp != Torque )
-////		{
-////			if ( Steering_Mode == ZERO_TURN ) //Mode - 3 : zero turn
-////			{
-////				for ( uint8_t i = 1 ; i < 5 ; i++ )
-////				{
-////				 Torque = (i==3 ) ? -Torque : Torque ;   
-////				 Set_Motor_Torque ( i , Torque );
-////				}	
-////			}
-////			else
-////			{
-////             for ( uint8_t i = 1 ; i < 5 ; i++ )
-////             { 
-////              Set_Motor_Torque ( i , Torque ); 
-////             }
-////			}
-////			Torque_Temp = Torque;
-////		}*/
-
-//			
-//		
-//		//if ( Motor_Velocity[3] > 10 || Motor_Velocity[3] < -10 ){Transmit_Motor_Torque();}
-//		
-////			if ( Left_Vel_Limit > Prev_Left_Vel_Limit)
-////			{
-////				Left_Transmit_Vel = Prev_Left_Vel_Limit + 1;
-////				for(uint8_t i=1 ; i <= 2 ; i++) { CAN_Transmit(i,VEL_LIMIT,Left_Transmit_Vel,4,DATA);HAL_Delay(1); }
-////				Prev_Left_Vel_Limit = Left_Transmit_Vel; HAL_Delay(5);
-////			}
-////			else if ( Left_Vel_Limit < Prev_Left_Vel_Limit)
-////			{
-////				Left_Transmit_Vel = Prev_Left_Vel_Limit - 1;
-////				for(uint8_t i=1 ; i <= 2 ; i++) { CAN_Transmit(i,VEL_LIMIT,Left_Transmit_Vel,4,DATA);HAL_Delay(1); }
-////				Prev_Left_Vel_Limit = Left_Transmit_Vel; HAL_Delay(5);
-////			}
-//			//////////////////////////////////////////////////////////////////////////////////////////////////////////
-//			if(Left_Vel_Limit != Left_Transmit_Vel)
-//			{
-//				if(HAL_GetTick() - left_tick_count >= 50)
-//				{
-//					if(Left_Vel_Limit > Left_Transmit_Vel)
-//					{
-//						Left_Transmit_Vel++;
-//					}
-//					
-//					else if(Left_Vel_Limit < Left_Transmit_Vel)
-//					{
-//						Left_Transmit_Vel--;
-//						
-
-//					}
-//					else{}
-//					
-//					for(uint8_t i=1 ; i <= 2 ; i++) { CAN_Transmit(i,VEL_LIMIT,Left_Transmit_Vel,4,DATA);HAL_Delay(1);}
-//					left_tick_count = HAL_GetTick();
-//				
-//			}
-//		}
-//			
-//			if(Right_Vel_Limit != Right_Transmit_Vel)
-//			{
-//				if(HAL_GetTick() - right_tick_count >= 50)
-//				{
-//					if(Right_Vel_Limit > Right_Transmit_Vel)
-//					{
-//						Right_Transmit_Vel++;
-//					}
-//					
-//					else if(Right_Vel_Limit < Right_Transmit_Vel)
-//					{
-//						Right_Transmit_Vel--;
-//					}
-//					
-//					else{}
-//						
-//					for(uint8_t i=3 ; i <= 4 ; i++) { CAN_Transmit(i,VEL_LIMIT,Right_Transmit_Vel,4,DATA);HAL_Delay(1);}
-//					right_tick_count = HAL_GetTick();
-//				}
-//			}
-//			////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//			
-//			 
-//			
-////			if ( Right_Vel_Limit > Prev_Right_Vel_Limit)
-////			{
-////				Right_Transmit_Vel = Prev_Right_Vel_Limit + 1;
-////				for(uint8_t i=3 ; i <= 4 ; i++) { CAN_Transmit(i,VEL_LIMIT,Right_Transmit_Vel,4,DATA);HAL_Delay(1); }
-////				Prev_Right_Vel_Limit = Right_Transmit_Vel; HAL_Delay(5);
-////			}
-////			else if ( Right_Vel_Limit < Prev_Right_Vel_Limit)
-////			{
-////				Right_Transmit_Vel = Prev_Right_Vel_Limit - 1;
-////				for(uint8_t i=3 ; i <= 4 ; i++) { CAN_Transmit(i,VEL_LIMIT,Right_Transmit_Vel,4,DATA);HAL_Delay(1); }
-////				Prev_Right_Vel_Limit = Right_Transmit_Vel; HAL_Delay(5);
-////			}
-//			
-//		//if ( Motor_Velocity[3] > 10 || Motor_Velocity[3] < -10 ){Transmit_Motor_Torque();}
-
-//	}	
-//	else 
-//	{
-//		for ( uint8_t i = 1 ; i < 5 ; i++ )
-//		{ 
-//				Set_Motor_Torque ( i , 0 ); HAL_Delay(1);
-//		}
-//	}
-//	
-////	if ( (!BT_State ) && Joystick != 0 )
-////	{
-////		for ( uint8_t i = 1 ; i < 5 ; i++ ){Set_Motor_Torque ( i , NULL ); HAL_Delay(1);}
-////		Joystick = 0 ;
-////	}
-//}
-
- void New_Drive_Controls(void)
+void New_Drive_Controls(void)
 {
 	if ( (Speed!= 0) && Left_IMU_State  ) //&& (Steering_Mode!= 1) )//&& (BT_State))   // mode == 2 added
 	{
@@ -2278,7 +2088,7 @@ void Transmit_Motor_Torque (void)
 }
 
 
- void New_New_Drive_Controls(void)
+void New_New_Drive_Controls(void)
 {
 	if ( (Speed!= 0) && Left_IMU_State  ) //&& (Steering_Mode!= 1) )//&& (BT_State))   // mode == 2 added
 	{
@@ -2442,37 +2252,6 @@ void Transmit_Motor_Torque (void)
 //		Joystick = 0 ;
 //	}
 }
-//void Wheel_Speeds_Calc(int Inner_Angle)
-//{
-
-//	
-//		kmph = Vel_Limit / 30;
-//    Steering_Angle = fabs((float)Inner_Angle); // new float
-//    Rover_Centre_Dist = ((WheelBase/sin(Steering_Angle*(3.14/180)))+TrackWidth)/1000;
-//    TimeTaken =  Rover_Centre_Dist/(kmph*0.277);
-//    Inner_Speed = ((Rover_Centre_Dist- 0.9)/TimeTaken)*3.6;      //0.65
-//    Inner_Speed = KMPHtoRPS(Inner_Speed) -  Vel_Limit;
-//    
-//    Outer_Speed = ((Rover_Centre_Dist+ 0.9)/TimeTaken)*3.6;      //0.65
-//    Outer_Speed = KMPHtoRPS(Outer_Speed) - Vel_Limit;
-//   
-//    if ( Inner_Angle <= -3 )
-//    {
-//        Left_Steering_Speed = Inner_Speed;
-//        Right_Steering_Speed = Outer_Speed;
-//    }
-//    else if ( Inner_Angle > 2 ) // Right Turn of the Rover
-//		{
-//				Left_Steering_Speed = Outer_Speed;
-//				Right_Steering_Speed = Inner_Speed;
-//		}
-//		else
-//		{
-//				Left_Steering_Speed = Right_Steering_Speed = NULL;		
-//		}
-
-//}
-
 void Wheel_Speeds_Calc(int Inner_Angle)
 {
 
@@ -2800,9 +2579,9 @@ void Operations_Monitor(void)
 	
 	if (HAL_GetTick() - Heartbeat_Tick >= 1500)
 	{
-		for (uint8_t i = 1; i < 17; i++)
+		for (uint8_t i = 1; i < 21; i++)
 		{
-			if (i != 5 || i != 17)
+			if (i != 5 && i != 17 && i != 18)
 			{
 				if (Node_Id[i] == Node_Id_Temp[i]) 
 				{
@@ -2827,13 +2606,14 @@ void Operations_Monitor(void)
 	
 	if (HAL_GetTick() - Drive_Error_Tick >= 1000)
 	{
-		for (uint8_t i = 1; i < 17; i++)
+		for (uint8_t k = 1; k < 21; k++)
 		{
-			if (i != 5)
+			if ((k != 5) && (k != 17) && (k != 18) )
 			{
-				if (Axis_State[i] != 8)
+				if (Axis_State[k] != 8)
 				{
 					Drive_Errored = SET;
+					err_count++;
 				}
 			}
 		}
@@ -2964,14 +2744,14 @@ void Operations_Monitor(void)
 		Pitch_Tick = HAL_GetTick();
 	}
 		
-	OPERATION_MONITOR_FLAG = Drive_Disconnected == SET || Sensor_Disconnected == SET || Drive_Errored == SET;// && FET_Temp_Exceeded == SET && Motor_Overloaded == SET && E_Stop == SET && Joystick_Disconnected == SET && Vertical_Limit_Exceeded == SET && Contour_Limit_Exceeded == SET && Pitch_Limit_Exceeded == SET && Vertical_Not_Responding == SET && Contour_Not_Responding == SET ? SET : NULL;
+	OPERATION_MONITOR_FLAG = Drive_Disconnected == SET || Sensor_Disconnected == SET || Drive_Errored == SET || Joystick_Disconnected ? SET : NULL;// && FET_Temp_Exceeded == SET && Motor_Overloaded == SET && E_Stop == SET && Joystick_Disconnected == SET && Vertical_Limit_Exceeded == SET && Contour_Limit_Exceeded == SET && Pitch_Limit_Exceeded == SET && Vertical_Not_Responding == SET && Contour_Not_Responding == SET ? SET : NULL;
 }
 
 void Emergency_Stop(void)
 {
 	BUZZER_ON;
 	
-	for (uint8_t i = 1; i < 20; i++)
+	for (uint8_t i = 1; i <= 20; i++)
 	{
 		Set_Motor_Velocity(i , 0);
 		Input_Velocity[i] = 0;
@@ -2981,9 +2761,9 @@ void Emergency_Stop(void)
 //	{
 		if (Drive_Disconnected == SET)
 		{
-			for (uint8_t i = 1; i < 17; i++)
+			for (uint8_t i = 1; i < 21; i++)
 			{
-				if(i != 5)
+				if(i != 5 && i != 17 && i != 18)
 				{
 					while (Node_Id[i] == Node_Id_Temp[i])
 					{ 
@@ -3006,9 +2786,9 @@ void Emergency_Stop(void)
 		
 		if (Drive_Errored == SET)
 		{
-			for (uint8_t i = 1; i < 17; i++)
+			for (uint8_t i = 1; i < 21; i++)
 			{
-				if (i != 5)
+				if (i != 5 && i != 17 && i != 18)
 				{
 					while (Axis_State[i] != 8)
 					{
@@ -3075,7 +2855,7 @@ void Emergency_Stop(void)
 		}
 	//}
 	
-	OPERATION_MONITOR_FLAG =  Drive_Disconnected == NULL && Sensor_Disconnected == NULL && Drive_Errored == NULL;// && FET_Temp_Exceeded == NULL && Motor_Overloaded == NULL && E_Stop == NULL && Joystick_Disconnected == NULL && Vertical_Limit_Exceeded == NULL && Contour_Limit_Exceeded == NULL && Pitch_Limit_Exceeded == NULL && Vertical_Not_Responding == NULL && Contour_Not_Responding == NULL && Pitch_Not_Responding == NULL ? NULL : SET;
+	OPERATION_MONITOR_FLAG =  Drive_Disconnected == NULL && Sensor_Disconnected == NULL && Drive_Errored == NULL && !Joystick_Disconnected ? NULL : SET;// && FET_Temp_Exceeded == NULL && Motor_Overloaded == NULL && E_Stop == NULL && Joystick_Disconnected == NULL && Vertical_Limit_Exceeded == NULL && Contour_Limit_Exceeded == NULL && Pitch_Limit_Exceeded == NULL && Vertical_Not_Responding == NULL && Contour_Not_Responding == NULL && Pitch_Not_Responding == NULL ? NULL : SET;
 	if (OPERATION_MONITOR_FLAG == NULL) {BUZZER_OFF;}
 	
 	
@@ -3151,7 +2931,7 @@ void Frame_Controls(void)
 		if( R_Vert_Speed_Temp != R_Vert_Speed ) 																															// checking if the new value is not equal to old value
 		{
 			Input_Velocity[6] = R_Vert_Speed;
-			Set_Motor_Velocity (RVert , R_Vert_Speed );	  //-
+			Set_Motor_Velocity (RVert , -R_Vert_Speed );	  //-
 			R_Vert_Speed_Temp = R_Vert_Speed ;																																// Overwriting old value with new value.
 		} 
 	//	Contour_Speed = Contour_Speed > 0 && Contour_Motor_Count >= 550 ? 0 : Contour_Speed < 0 && Contour_Motor_Count <= -550 ? 0 : Contour_Speed ;
@@ -3159,7 +2939,7 @@ void Frame_Controls(void)
 		if( Contour_Speed_Temp != Contour_Speed ) 																														// checking if the new value is not equal to old value
 		{
 			Input_Velocity[7] = Contour_Speed;
-			Set_Motor_Velocity (Contour , -Contour_Speed );
+			Set_Motor_Velocity (Contour , Contour_Speed );
 			Contour_Speed_Temp = Contour_Speed ;																															// Overwriting old value with new value.
 		}		
 		
@@ -3977,9 +3757,7 @@ void Demo()
 		Pitch_Arm_Speed_Temp = Pitch_Arm_Speed;
 	}
 }
-//if ( Motor_Velocity[8] != LF_Speed ) 
-
- void New_Drive_Controls_V2(void)
+void New_Drive_Controls_V2(void)
 {
 	if ( (Speed!= 0) && Left_IMU_State  ) //&& (Steering_Mode!= 1) )//&& (BT_State))   // mode == 2 added
 	{
@@ -4685,8 +4463,8 @@ void New_Steering_Controls (void)
 								LF_Error = (-Inner_Angle - (LF_Steering)) ;		
 								LR_Error = (Inner_Angle - (LR_Steering)) ; 		
 								
-								LF_Error = LF_Error <= 0.5 && LF_Error >= -0.5 ? 0 : LF_Error;
-								LR_Error = LR_Error <= 0.5 && LR_Error >= -0.5 ? 0 : LR_Error;
+								LF_Error = LF_Error <= 0.8 && LF_Error >= -0.8 ? 0 : LF_Error;
+								LR_Error = LR_Error <= 0.8 && LR_Error >= -0.8 ? 0 : LR_Error;
 
 								LF_Speed = LF_Error * STEERING_KP;
 								LR_Speed = LR_Error * STEERING_KP;							
@@ -4700,8 +4478,8 @@ void New_Steering_Controls (void)
 								RF_Error = (-Outer_Angle - (-RF_Steering)) ;
 								RR_Error = (-Outer_Angle - (RR_Steering)) ; 
 								
-								RF_Error = RF_Error <= 0.5 && RF_Error >= -0.5 ? 0 : RF_Error;
-								RR_Error = RR_Error <= 0.5 && RR_Error >= -0.5 ? 0 : RR_Error;
+								RF_Error = RF_Error <= 0.8 && RF_Error >= -0.8 ? 0 : RF_Error;
+								RR_Error = RR_Error <= 0.8 && RR_Error >= -0.8 ? 0 : RR_Error;
 								
 								RF_Speed = RF_Error * STEERING_KP;
 								RR_Speed = RR_Error * STEERING_KP;
@@ -4719,8 +4497,8 @@ void New_Steering_Controls (void)
 								RF_Error = (Inner_Angle - (-RF_Steering)) ;			
 								RR_Error = (Inner_Angle - (RR_Steering)) ; 
 
-								RF_Error = RF_Error <= 0.5 && RF_Error >= -0.5 ? 0 : RF_Error;
-								RR_Error = RR_Error <= 0.5 && RR_Error >= -0.5 ? 0 : RR_Error;
+								RF_Error = RF_Error <= 0.8 && RF_Error >= -0.8 ? 0 : RF_Error;
+								RR_Error = RR_Error <= 0.8 && RR_Error >= -0.8 ? 0 : RR_Error;
 
 								RF_Speed = RF_Error * STEERING_KP;
 								RR_Speed = RR_Error * STEERING_KP;	
@@ -4734,8 +4512,8 @@ void New_Steering_Controls (void)
 								LF_Error = (-Outer_Angle- (LF_Steering)) ;
 								LR_Error = (Outer_Angle_2 - (LR_Steering)) ; 
 								
-								LF_Error = LF_Error <= 0.5 && LF_Error >= -0.5 ? 0 : LF_Error;
-								LR_Error = LR_Error <= 0.5 && LR_Error >= -0.5 ? 0 : LR_Error;
+								LF_Error = LF_Error <= 0.8 && LF_Error >= -0.8 ? 0 : LF_Error;
+								LR_Error = LR_Error <= 0.8 && LR_Error >= -0.8 ? 0 : LR_Error;
 								
 								LF_Speed = LF_Error * STEERING_KP;
 								LR_Speed = LR_Error * STEERING_KP;
