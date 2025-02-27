@@ -194,6 +194,8 @@ float LF_Speed=0, LR_Speed=0, RF_Speed=0, RR_Speed=0 , LF_Speed_Temp =0, LR_Spee
 _Bool Steering_Reset_Flag = SET , LF_SET = NULL , LR_SET = NULL, RF_SET = NULL, RR_SET = NULL , BUZZ_SW = SET;
 float Inner_Angle =0 , Outer_Angle=0, Prev_Inner_Angle =0 , AW_Angle=0 , Outer_Angle_2=0 , LS_Angle=0, RS_Angle=0;
 bool Angle_Ready = 0;
+
+float LFS_Filtered = 0, Prev_LFS_Filtered = 0, LRS_Filtered = 0, Prev_LRS_Filtered = 0, RFS_Filtered = 0, Prev_RFS_Filtered = 0, RRS_Filtered = 0, Prev_RRS_Filtered = 0;
 /* 							STEERING_VARIABLES 						*/
 /* 							SENSING_VARIABLES 						*/
 
@@ -474,6 +476,7 @@ void Left_Frame_Controls (void);
  void Flap_Sensor_Pos(double Sensor_Value, double Zero_Pos);
  float Top_Sensing_PID ( float Flap_Value , unsigned long long 	R_Time_Stamp );
  void All_Macro_Sensing(void);
+ void New_Steering_Controls_(void);
  //void Set_Motor_Position (uint8_t Axis, float Position);
 /* USER CODE END PFP */
 
@@ -525,7 +528,22 @@ double RL_Flap_LPF(double input, double prev_output, double alpha) {
 double RR_Flap_LPF(double input, double prev_output, double alpha) {
     return alpha * input + (1.0 - alpha) * prev_output;
 }
-
+double LFS_LPF(double input, double prev_output, double alpha)
+{
+	return alpha * input + (1.0 - alpha) * prev_output;
+}
+double LRS_LPF(double input, double prev_output, double alpha)
+{
+	return alpha * input + (1.0 - alpha) * prev_output;
+}
+double RFS_LPF(double input, double prev_output, double alpha)
+{
+	return alpha * input + (1.0 - alpha) * prev_output;
+}
+double RRS_LPF(double input, double prev_output, double alpha)
+{
+	return alpha * input + (1.0 - alpha) * prev_output;
+}
 /* 							UART RECEPTION INTERRUPTS 						*/
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
@@ -626,6 +644,18 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan1)
 	
 	R_Pitch_Filtered = Right_Contour_LPF (R_Pitch, Prev_R_Pitch_Filtered, ALPHA);
 	Prev_R_Pitch_Filtered = R_Pitch_Filtered;
+	
+	LFS_Filtered = LFS_LPF(LF_Steering, Prev_LFS_Filtered, ALPHA);
+	Prev_LFS_Filtered = LFS_Filtered;
+	
+	LRS_Filtered = LRS_LPF(LR_Steering, Prev_LRS_Filtered, ALPHA);
+	Prev_LRS_Filtered = LRS_Filtered;
+	
+	RFS_Filtered = RFS_LPF(RF_Steering, Prev_RFS_Filtered, ALPHA);
+	Prev_RFS_Filtered = RFS_Filtered;
+	
+	RRS_Filtered = RRS_LPF(RR_Steering, Prev_RRS_Filtered, ALPHA);
+	Prev_RRS_Filtered = RRS_Filtered;
 }
 
 void Set_Motor_Position ( uint8_t Axis , float Position )
@@ -2582,7 +2612,7 @@ void Operations_Monitor(void)
 	{
 		for (uint8_t i = 1; i < 21; i++)
 		{
-			if (i != 5 && i != 17 && i != 18)
+			if (i != 5 && i != 17 && i != 14)
 			{
 				if (Node_Id[i] == Node_Id_Temp[i]) 
 				{
@@ -2609,7 +2639,7 @@ void Operations_Monitor(void)
 	{
 		for (uint8_t k = 1; k < 21; k++)
 		{
-			if ((k != 5) && (k != 17) && (k != 18) )
+			if ((k != 5) && (k != 17) && (k != 14) )
 			{
 				if (Axis_State[k] != 8)
 				{
@@ -2764,7 +2794,7 @@ void Emergency_Stop(void)
 		{
 			for (uint8_t i = 1; i < 21; i++)
 			{
-				if(i != 5 && i != 17 && i != 18)
+				if(i != 5 && i != 17 && i != 14)
 				{
 					while (Node_Id[i] == Node_Id_Temp[i])
 					{ 
@@ -2789,7 +2819,7 @@ void Emergency_Stop(void)
 		{
 			for (uint8_t i = 1; i < 21; i++)
 			{
-				if (i != 5 && i != 17 && i != 18)
+				if (i != 5 && i != 17 && i != 14)
 				{
 					while (Axis_State[i] != 8)
 					{
@@ -4066,6 +4096,286 @@ void Drive_Wheel_Controls_Vel_Based(void)
 				MODE_CHANGE_FLAG = NULL;
 		}
 	}
+}
+
+void New_Steering_Controls_ (void)
+{
+/*	If the Steering Reset Flag is SET, all the Steering wheels will return to their Home Position.	
+		Flag Sets on Power Up and at every Steering Mode Change.																*/	
+	
+	if ( Steering_Reset_Flag )
+	{
+		/*///////////////////////////////////////////////////////////	STEERING RESET CONTROLLER /////////////////////////////////////////////////////////	*/
+		if ( (LFS_Filtered <= STEERING_BOUNDARY ) && ( LFS_Filtered >= -STEERING_BOUNDARY ) ) { LF_Speed = 0;	LF_SET = SET;} 
+		else {LF_Speed = ( LFS_Filtered > STEERING_BOUNDARY ) ? -STEERING_HOMING_SPEED : ( LFS_Filtered < STEERING_BOUNDARY ) ? STEERING_HOMING_SPEED : 0;}		
+		
+		if ( (LRS_Filtered <= STEERING_BOUNDARY ) && ( LRS_Filtered >= -STEERING_BOUNDARY ) ) { LR_Speed = 0;	LR_SET = SET;} 
+		else {LR_Speed = ( LRS_Filtered > STEERING_BOUNDARY ) ? -STEERING_HOMING_SPEED : ( LRS_Filtered < STEERING_BOUNDARY ) ? STEERING_HOMING_SPEED : 0;}	
+		
+		if ( (RFS_Filtered <= STEERING_BOUNDARY ) && ( RFS_Filtered >= -STEERING_BOUNDARY ) ) { RF_Speed = 0;	RF_SET = SET;} 
+		else {RF_Speed = ( RFS_Filtered > STEERING_BOUNDARY ) ? STEERING_HOMING_SPEED : ( RFS_Filtered < STEERING_BOUNDARY ) ? -STEERING_HOMING_SPEED : 0;}	
+		
+		if ( (RRS_Filtered <= STEERING_BOUNDARY ) && ( RRS_Filtered >= -STEERING_BOUNDARY ) ) { RR_Speed = 0;	RR_SET = SET;} 
+		else {RR_Speed = ( RRS_Filtered > STEERING_BOUNDARY ) ? -STEERING_HOMING_SPEED : ( RRS_Filtered < STEERING_BOUNDARY ) ? STEERING_HOMING_SPEED : 0;}	
+		/*///////////////////////////////////////////////////////////	STEERING RESET CONTROLLER /////////////////////////////////////////////////////////	*/
+		
+		LF_Error = LR_Error = RF_Error = RR_Error = 1;
+		if ((LF_SET) && (LR_SET) && (RF_SET) && (RR_SET) )	
+		{
+			LF_SET = LR_SET = RF_SET = RR_SET = NULL ;
+			Steering_Reset_Flag=NULL;
+		}
+		else{}
+	}
+		
+	else if( !Steering_Reset_Flag  )
+	{
+		switch ( Steering_Mode )
+		{
+//			case 0:
+//						if ( (LF_Steering <= STEERING_BOUNDARY ) && ( LF_Steering >= -STEERING_BOUNDARY ) ) { LF_Speed = 0;	LF_SET = SET;} 
+//						else {LF_Speed = ( LF_Steering > STEERING_BOUNDARY ) ? -STEERING_HOMING_SPEED : ( LF_Steering < STEERING_BOUNDARY ) ? STEERING_HOMING_SPEED : 0;}		
+//						
+//						if ( (LR_Steering <= STEERING_BOUNDARY ) && ( LR_Steering >= -STEERING_BOUNDARY ) ) { LR_Speed = 0;	LR_SET = SET;} 
+//						else {LR_Speed = ( LR_Steering > STEERING_BOUNDARY ) ? -STEERING_HOMING_SPEED : ( LR_Steering < STEERING_BOUNDARY ) ? STEERING_HOMING_SPEED : 0;}	
+//						
+//						if ( (RF_Steering <= STEERING_BOUNDARY ) && ( RF_Steering >= -STEERING_BOUNDARY ) ) { RF_Speed = 0;	RF_SET = SET;} 
+//						else {RF_Speed = ( RF_Steering > STEERING_BOUNDARY ) ? STEERING_HOMING_SPEED : ( RF_Steering < STEERING_BOUNDARY ) ? -STEERING_HOMING_SPEED : 0;}	
+//						
+//						if ( (RR_Steering <= STEERING_BOUNDARY ) && ( RR_Steering >= -STEERING_BOUNDARY ) ) { RR_Speed = 0;	RR_SET = SET;} 
+//						else {RR_Speed = ( RR_Steering > STEERING_BOUNDARY ) ? -STEERING_HOMING_SPEED : ( RR_Steering < STEERING_BOUNDARY ) ? STEERING_HOMING_SPEED : 0;}	
+//						break;
+			case ALL_WHEEL :	 //	 --> ALL WHEEL STEERING  
+							/*///////////////////////////////////////////////////////////////////////////////////	ALL WHEEL STEERING  - STEERING FUNCTION ///////////////////////////////////////////////////////////////////////////////	*/
+							
+							//Inner_Angle =	(( Pot_Angle / 2 ) - 45);
+								Inner_Angle = (Pot_Angle - 90) / 3;
+		
+							
+							if ( Inner_Angle <= -1 )  // Left Turn of the Rover
+							{
+								Avg_Steering_Angle = fabs((fabs(LFS_Filtered) + fabs(LRS_Filtered)) / 2);     //CHANGE
+								LF = fabs(LFS_Filtered);
+								LR = fabs(LRS_Filtered);
+								New_Inner_Angle =  fabs((fabs(LFS_Filtered) + fabs(LRS_Filtered)) / 2);     //both should be either +ve or -ve
+								New_Inner_Angle = -New_Inner_Angle;
+								
+								LF_Error = (-Inner_Angle - (LFS_Filtered)) ;		
+								LR_Error = (Inner_Angle - (LRS_Filtered)) ; 		
+								
+								LF_Error = LF_Error <= 0.8 && LF_Error >= -0.8 ? 0 : LF_Error;
+								LR_Error = LR_Error <= 0.8 && LR_Error >= -0.8 ? 0 : LR_Error;
+
+								LF_Speed = LF_Error * STEERING_KP;
+								LR_Speed = LR_Error * STEERING_KP;							
+								
+								//Outer_Angle = Differintial_Angle((-Inner_Angle ))	;
+								Outer_Angle = Differintial_Angle((Avg_Steering_Angle ))	;		//CHANGE
+									
+								//Outer_Angle_2	= Differintial_Angle((-Inner_Angle ))	;
+								Outer_Angle_2	= Differintial_Angle((Avg_Steering_Angle ))	;	   //CHANGE
+								
+								RF_Error = (-Outer_Angle - (-RFS_Filtered)) ;
+								RR_Error = (-Outer_Angle - (RRS_Filtered)) ; 
+								
+								RF_Error = RF_Error <= 0.8 && RF_Error >= -0.8 ? 0 : RF_Error;
+								RR_Error = RR_Error <= 0.8 && RR_Error >= -0.8 ? 0 : RR_Error;
+								
+								RF_Speed = RF_Error * STEERING_KP;
+								RR_Speed = RR_Error * STEERING_KP;
+							
+								Prev_Inner_Angle = Inner_Angle;
+							
+							}
+
+							else if ( Inner_Angle >= 0 ) // Right Turn of the Rover   //0
+							{
+								
+								Avg_Steering_Angle = fabs((fabs(RFS_Filtered) + fabs(RRS_Filtered)) / 2);      //CHANGE
+								New_Inner_Angle = fabs((fabs(RFS_Filtered) + fabs(RRS_Filtered)) / 2);     //both should be either +ve or -ve    
+								
+								RF_Error = (Inner_Angle - (-RFS_Filtered)) ;			
+								RR_Error = (Inner_Angle - (RRS_Filtered)) ; 
+
+								RF_Error = RF_Error <= 0.8 && RF_Error >= -0.8 ? 0 : RF_Error;
+								RR_Error = RR_Error <= 0.8 && RR_Error >= -0.8 ? 0 : RR_Error;
+
+								RF_Speed = RF_Error * STEERING_KP;
+								RR_Speed = RR_Error * STEERING_KP;	
+								
+								//Outer_Angle = Differintial_Angle((Inner_Angle ))	;	
+								Outer_Angle = Differintial_Angle((Avg_Steering_Angle ))	;		      //CHANGE
+									
+								//Outer_Angle_2	= Differintial_Angle((Inner_Angle ));
+								Outer_Angle_2	= Differintial_Angle((Avg_Steering_Angle ));		    //CHANGE
+								
+								LF_Error = (-Outer_Angle- (LFS_Filtered)) ;
+								LR_Error = (Outer_Angle_2 - (LRS_Filtered)) ; 
+								
+								LF_Error = LF_Error <= 0.8 && LF_Error >= -0.8 ? 0 : LF_Error;
+								LR_Error = LR_Error <= 0.8 && LR_Error >= -0.8 ? 0 : LR_Error;
+								
+								LF_Speed = LF_Error * STEERING_KP;
+								LR_Speed = LR_Error * STEERING_KP;
+								
+									
+								Prev_Inner_Angle = Inner_Angle;
+								
+								
+							}	
+							
+							else // Home Pos of the Rover
+							{							
+									
+								Left_Steering_Speed = Right_Steering_Speed = NULL;	
+								Steering_Reset_Flag = SET;
+								LF_Error = LR_Error = RF_Error = RR_Error = 1;
+							}
+					
+							
+							//Wheel_Speeds_Calc(Inner_Angle);
+							Wheel_Speeds_Calc(New_Inner_Angle);                 //CHANGE
+							break;
+			/*///////////////////////////////////////////////////////////////////////////////////	ALL WHEEL STEERING  - STEERING FUNCTION ///////////////////////////////////////////////////////////////////////////////	*/				
+			case CRAB :							//	--> CRAB STEERING			
+			/*///////////////////////////////////////////////////////////////////////////////////	CRAB STEERING  - STEERING FUNCTION ///////////////////////////////////////////////////////////////////////////////////	*/
+			
+							AW_Angle = ( Pot_Angle - 90) ; 
+			
+							LF_Speed = (LFS_Filtered > AW_Angle -STEERING_BOUNDARY && LFS_Filtered < AW_Angle +STEERING_BOUNDARY ) ? 0 : ( LFS_Filtered < AW_Angle ) ? STEERING_HOMING_SPEED: ( LFS_Filtered > AW_Angle ) ? -STEERING_HOMING_SPEED : 0;		
+							LR_Speed = (LRS_Filtered > AW_Angle -STEERING_BOUNDARY && LRS_Filtered < AW_Angle +STEERING_BOUNDARY ) ? 0 : ( LRS_Filtered < AW_Angle ) ? STEERING_HOMING_SPEED: ( LRS_Filtered > AW_Angle ) ? -STEERING_HOMING_SPEED : 0;					
+							RF_Speed = (RFS_Filtered > AW_Angle -STEERING_BOUNDARY && RFS_Filtered < AW_Angle +STEERING_BOUNDARY ) ? 0 : ( RFS_Filtered < AW_Angle-STEERING_BOUNDARY ) ? -STEERING_HOMING_SPEED: ( RFS_Filtered > AW_Angle+STEERING_BOUNDARY ) ?  STEERING_HOMING_SPEED : 0;
+							RR_Speed = (RRS_Filtered > AW_Angle -STEERING_BOUNDARY && RRS_Filtered < AW_Angle +STEERING_BOUNDARY ) ? 0 : ( RRS_Filtered < AW_Angle ) ? STEERING_HOMING_SPEED: ( RRS_Filtered > AW_Angle ) ? -STEERING_HOMING_SPEED : 0;
+							break;
+				/*///////////////////////////////////////////////////////////////////////////////////	CRAB STEERING  - STEERING FUNCTION ///////////////////////////////////////////////////////////////////////////////////	*/	
+
+				case ZERO_TURN :
+				/*///////////////////////////////////////////////////////////////////////////////////	ZERO TURN - STEERING FUNCTION ////////////////////////////////////////////////////////////////////////////////////////	*/
+							AW_Angle = Zero_Turn_Angle ; 
+			
+							LF_Speed = (LFS_Filtered > -AW_Angle -STEERING_BOUNDARY && LFS_Filtered < -AW_Angle +STEERING_BOUNDARY ) ? 0  : ( LFS_Filtered < -AW_Angle ) ? STEERING_HOMING_SPEED: ( LFS_Filtered > -AW_Angle ) ? -STEERING_HOMING_SPEED :  0;		
+							LR_Speed = (LRS_Filtered > AW_Angle -STEERING_BOUNDARY  && LRS_Filtered < AW_Angle +STEERING_BOUNDARY )  ? 0  : ( LRS_Filtered < AW_Angle )  ? STEERING_HOMING_SPEED: ( LRS_Filtered > AW_Angle )  ? -STEERING_HOMING_SPEED :  0;
+							RF_Speed = (RFS_Filtered > AW_Angle -STEERING_BOUNDARY  && RFS_Filtered < AW_Angle +STEERING_BOUNDARY )  ? 0  : ( RFS_Filtered < AW_Angle )  ? -STEERING_HOMING_SPEED: ( RFS_Filtered > AW_Angle )  ? STEERING_HOMING_SPEED :  0;		
+							RR_Speed = (RRS_Filtered > -AW_Angle -STEERING_BOUNDARY && RRS_Filtered < -AW_Angle +STEERING_BOUNDARY ) ? 0  : ( RRS_Filtered < -AW_Angle ) ? STEERING_HOMING_SPEED: ( RRS_Filtered > -AW_Angle ) ? -STEERING_HOMING_SPEED	:  0;
+
+							break;
+				/*///////////////////////////////////////////////////////////////////////////////////	ZERO TURN - STEERING FUNCTION ////////////////////////////////////////////////////////////////////////////////////////	*/
+	/*			case FRONT_WHEEL :	 //	 --> FRONT WHEEL STEERING  */
+							/*///////////////////////////////////////////////////////////////////////////////////	ALL WHEEL STEERING  - STEERING FUNCTION ///////////////////////////////////////////////////////////////////////////////	*/
+			/*				Inner_Angle =	( Pot_Angle / 2 ) - 45;
+								
+							if ( Inner_Angle <= -1 )  
+							{
+							
+							LF_Error = (-Inner_Angle - (LF_Steering)) ;LF_Speed = LF_Error * STEERING_KP;
+							Outer_Angle = FWD_Differintial_Angle((-Inner_Angle ))	;	Flash_Factor = Inner_Angle / Outer_Angle; Outer_Steering_Speed = Inner_Steering_Speed / Flash_Factor;
+							RF_Error = (-Outer_Angle - (-RF_Steering)) ;RF_Speed = RF_Error * STEERING_KP;									
+							Outer_Angle_2	= FWD_Differintial_Angle((-Inner_Angle ))	;					
+							Prev_Inner_Angle = Inner_Angle;
+							}
+							
+							
+							else if ( Inner_Angle >= 0 ) 
+							{
+							RF_Error = (Inner_Angle - (-RF_Steering)) ;RF_Speed = RF_Error * STEERING_KP;	
+							Outer_Angle = FWD_Differintial_Angle((Inner_Angle ))	;	Flash_Factor = Inner_Angle / Outer_Angle; Outer_Steering_Speed = Inner_Steering_Speed / Flash_Factor;
+							Outer_Angle_2	= FWD_Differintial_Angle((Inner_Angle ))	;		
+							LF_Error = (-Outer_Angle- (LF_Steering)) ;LF_Speed = LF_Error * STEERING_KP;
+							Prev_Inner_Angle = Inner_Angle;
+							
+							}	
+							
+							else 
+							{								
+								Steering_Reset_Flag = SET;
+								LF_Error = LR_Error = RF_Error = RR_Error = 1;
+							}
+							
+							if ( (LR_Steering <= STEERING_BOUNDARY ) && ( LR_Steering >= -STEERING_BOUNDARY ) ) { LR_Speed = 0;	LR_SET = SET;} 
+							else {LR_Speed = ( LR_Steering > STEERING_BOUNDARY ) ? -STEERING_HOMING_SPEED : ( LR_Steering < STEERING_BOUNDARY ) ? STEERING_HOMING_SPEED : 0;}	
+							
+							if ( (RR_Steering <= STEERING_BOUNDARY ) && ( RR_Steering >= -STEERING_BOUNDARY ) ) { RR_Speed = 0;	RR_SET = SET;} 
+							else {RR_Speed = ( RR_Steering > STEERING_BOUNDARY ) ? -STEERING_HOMING_SPEED : ( RR_Steering < STEERING_BOUNDARY ) ? STEERING_HOMING_SPEED : 0;}	
+
+							break;*/
+							
+				case WIDTH_EXTEND: 
+					
+							LS_Angle = -WIDE_ANGLE; 
+							RS_Angle =-WIDE_ANGLE; 
+							LF_Speed = (LFS_Filtered > LS_Angle -STEERING_BOUNDARY && LFS_Filtered < LS_Angle +STEERING_BOUNDARY ) ? 0 : ( LFS_Filtered < LS_Angle ) ? STEERING_HOMING_SPEED: ( LFS_Filtered > LS_Angle ) ? -STEERING_HOMING_SPEED : 0;		
+							LR_Speed = (LRS_Filtered > LS_Angle -STEERING_BOUNDARY && LRS_Filtered < LS_Angle +STEERING_BOUNDARY ) ? 0 : ( LRS_Filtered < LS_Angle ) ? STEERING_HOMING_SPEED: ( LRS_Filtered > LS_Angle )? -STEERING_HOMING_SPEED : 0;
+							RF_Speed= RR_Speed=0;			
+							Angle_Ready = ((LFS_Filtered > LS_Angle -STEERING_BOUNDARY && LFS_Filtered < LS_Angle +STEERING_BOUNDARY )&& (RFS_Filtered > RS_Angle -STEERING_BOUNDARY && RFS_Filtered < RS_Angle +STEERING_BOUNDARY ))? SET: NULL;
+							Angle_Ready = ((LFS_Filtered > LS_Angle -STEERING_BOUNDARY && LFS_Filtered < LS_Angle +STEERING_BOUNDARY ))? SET: NULL;
+											
+							break;
+				
+				case WIDTH_SHRINK: 
+								
+							LS_Angle = SHRINK_ANGLE; 
+							RS_Angle = SHRINK_ANGLE; 
+							LF_Speed = (LFS_Filtered > LS_Angle -STEERING_BOUNDARY && LFS_Filtered < LS_Angle +STEERING_BOUNDARY ) ? 0 : ( LFS_Filtered < LS_Angle ) ? STEERING_HOMING_SPEED: ( LFS_Filtered > LS_Angle ) ? -STEERING_HOMING_SPEED : 0;
+							LR_Speed = (LRS_Filtered > LS_Angle -STEERING_BOUNDARY && LRS_Filtered < LS_Angle +STEERING_BOUNDARY ) ? 0 : ( LRS_Filtered < LS_Angle ) ? STEERING_HOMING_SPEED: ( LRS_Filtered > LS_Angle ) ? -STEERING_HOMING_SPEED : 0;
+							RF_Speed= RR_Speed=0;			
+							Angle_Ready = ((LFS_Filtered > LS_Angle -STEERING_BOUNDARY && LFS_Filtered < LS_Angle +STEERING_BOUNDARY ))? SET: NULL;			
+							break;
+										
+			default :  break;
+		}
+	}
+					
+			/*----------------------------- STEERING VELOCITY CONTROLLER --------------------------------*/
+	LF_Speed = LF_Speed > 0 && LFS_Filtered >= 90 ?  0 : LF_Speed < 0 && LFS_Filtered <= -90 ? 0 : LF_Speed;
+	LR_Speed = LR_Speed > 0 && LRS_Filtered >= 90 ?  0 : LR_Speed < 0 && LRS_Filtered <= -90 ? 0 : LR_Speed;
+	RF_Speed = RF_Speed < 0 && RFS_Filtered >= 90 ?  0 : RF_Speed > 0 && RFS_Filtered <= -90 ? 0 : RF_Speed;
+	RR_Speed = RR_Speed > 0 && RRS_Filtered >= 90 ?  0 : RR_Speed < 0 && RRS_Filtered <= -90 ? 0 : RR_Speed;
+	
+			if ( LF_Speed_Temp != LF_Speed )
+			{
+				LF_Speed= LF_Speed > STEERING_MAX_VEL ? STEERING_MAX_VEL : LF_Speed < -STEERING_MAX_VEL ? -STEERING_MAX_VEL : LF_Speed; 
+				for (uint8_t i = 0; i < 5; i++)
+				{
+					Input_Velocity[8] = -LF_Speed;
+					Set_Motor_Velocity( LFS , -LF_Speed );
+				}
+				LF_Speed_Temp = LF_Speed ;
+			}
+			
+			if ( LR_Speed_Temp != LR_Speed )
+			{
+				LR_Speed= LR_Speed > STEERING_MAX_VEL ? STEERING_MAX_VEL : LR_Speed < -STEERING_MAX_VEL ? -STEERING_MAX_VEL : LR_Speed;
+				for(uint8_t i = 0; i < 2; i++)
+				{
+					Input_Velocity[9] = -LR_Speed;
+				 Set_Motor_Velocity( LRS , -LR_Speed );
+					
+				}
+				LR_Speed_Temp = LR_Speed ;
+			}
+						
+			if ( RF_Speed_Temp != RF_Speed )
+			{	
+				RF_Speed= RF_Speed > STEERING_MAX_VEL ? STEERING_MAX_VEL : RF_Speed < -STEERING_MAX_VEL ? -STEERING_MAX_VEL : RF_Speed;
+				for (uint8_t i =0; i< 5; i++)
+				{
+					Input_Velocity[10] = -RF_Speed;
+					Set_Motor_Velocity( RFS , -RF_Speed );
+				}
+				RF_Speed_Temp = RF_Speed ;
+			}
+										
+			if ( RR_Speed_Temp != RR_Speed )
+			{
+				RR_Speed= RR_Speed > STEERING_MAX_VEL ? STEERING_MAX_VEL : RR_Speed < -STEERING_MAX_VEL ? -STEERING_MAX_VEL : RR_Speed;
+				for (uint8_t i = 0; i < 5; i++)
+				{
+					Input_Velocity[11] = -RR_Speed;
+					Set_Motor_Velocity( RRS , -RR_Speed );
+				}
+				RR_Speed_Temp = RR_Speed ;
+			}	
+			/*----------------------------- STEERING VELOCITY CONTROLLER --------------------------------*/
 }
 void New_Steering_Controls (void)
 {
