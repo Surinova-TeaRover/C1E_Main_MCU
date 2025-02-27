@@ -222,6 +222,7 @@ bool DRIVES_ERROR_FLAG = NULL;
 float L_R_Err=0, R_R_Err=0, C_Err=0, Contour_Avg=0, Drive_Torque=1, Wheel_Torque = 10;
 float Vel_Limit = 0, Vel_Limit_Temp=1, Torque=0, Torque_Temp=0 , Prev_Torque=0, Prev_Vel_Limit=30, Input_Vel = 0;
 int Left_Wheels_Torque =0, Left_Wheels_Torque_Temp=0;
+bool MODE_CHANGE_FLAG = SET;
 
 /* 							DRIVE_WHEELS_VARIABLES 						*/
 
@@ -332,7 +333,7 @@ float Flap_Error_LR = 0, Flap_Target_LR = 0, Flap_Error_RR = 0, Flap_Target_RR =
 
 float Left_Macro_Speed = 0, Right_Macro_Speed = 0, Left_Macro_Speed_Temp = 0, Right_Macro_Speed_Temp = 0;
 float Left_Macro_Count = 0, Right_Macro_Count = 0, Macro_Error = 0, Macro_Kp = 1, Correction_Speed = 0;
-uint8_t max_difference = 1;
+uint8_t max_difference = 5;
 
 float M_Error_Change = 0, M_Prev_Error = 0, M_Error_Slope = 0, M_Error_Area = 0;
 float M_P = 0, M_I = 0, M_D = 0, M_Kp = 0, M_Ki = 0, M_Kd = 0;
@@ -2883,9 +2884,9 @@ void Frame_Controls(void)
 		Left_Error_Flag =( L_Vert_Speed == 0 ) ? NULL : SET;																									// (CHECK) for basic testing. to set once the vertical speed is zero(correction completed) ISSUE
 	
 */
-			
+		//R_R_Err =  Right_Pitch_Pos - R_Pitch 	;	
 	
-		R_R_Err =  Right_Pitch_Pos - R_Pitch 	;																																	// R roll error = Target value(-3.0625) - current value.
+		R_R_Err =  Right_Pitch_Pos - R_Pitch_Filtered 	;																																	// R roll error = Target value(-3.0625) - current value.
 	
 		R_Vert_Speed = Right_Verticality_PID ( R_R_Err , NULL );																							// R Vertical speed from right verticality pid function. 
 	
@@ -2896,7 +2897,9 @@ void Frame_Controls(void)
 
 		//Contour_Avg =	R_Pitch ;																																						
 		
-		C_Err =   Right_Roll_Pos - R_Roll ;	
+		//C_Err =   Right_Roll_Pos - R_Roll ;	
+		
+		C_Err =   Right_Roll_Pos - R_Roll_Filtered ;	
 		
 		// (CHECK) Contour error = Target value(2.5) - current value.
 	
@@ -3544,59 +3547,59 @@ void Shearing_Motors (void)
 	{
 		if ( Shearing == 2 )
 		{
-			if (HAL_GetTick() - Shearing_Tick >= 1500)
-			{
-				for (uint8_t i = 18; i <= 20; i++)
-				{
-					
-//					if (Node_Id[i] != Node_Id_Temp[i])
+//			if (HAL_GetTick() - Shearing_Tick >= 1500)
+//			{
+//				for (uint8_t i = 18; i <= 20; i++)
+//				{
+//					
+////					if (Node_Id[i] != Node_Id_Temp[i])
+////					{
+////						Shearing_Drive_Disconnected = NULL;
+////						Node_Id_Temp[i] = Node_Id[i];
+////					}
+////					
+////					else
+////					{
+////						Shearing_Drive_Disconnected = SET;
+////						Set_Motor_Velocity( 17 , 0 ); 
+////						Set_Motor_Velocity( 18 , 0 ); 
+////						Set_Motor_Velocity( 19 , 0 );
+////					}
+//					
+//					if (Axis_State[i] != 8)
 //					{
-//						Shearing_Drive_Disconnected = NULL;
-//						Node_Id_Temp[i] = Node_Id[i];
+//						Shearing_Drive_Errored = SET;
+//						Set_Motor_Velocity( 20 , 0 ); 
+//						Set_Motor_Velocity( 18 , 0 ); 
+//						Set_Motor_Velocity( 19 , 0 ); 
+//						if (HAL_GetTick() - Reboot_Tick >= 3000)
+//						{
+//							Reboot(i);
+//							Reboot_Tick = HAL_GetTick();
+//						}
 //					}
 //					
 //					else
 //					{
-//						Shearing_Drive_Disconnected = SET;
-//						Set_Motor_Velocity( 17 , 0 ); 
-//						Set_Motor_Velocity( 18 , 0 ); 
-//						Set_Motor_Velocity( 19 , 0 );
+//						Reboot_Tick = 0;
+//						Shearing_Drive_Errored = NULL;
 //					}
-					
-					if (Axis_State[i] != 8)
-					{
-						Shearing_Drive_Errored = SET;
-						Set_Motor_Velocity( 20 , 0 ); 
-						Set_Motor_Velocity( 18 , 0 ); 
-						Set_Motor_Velocity( 19 , 0 ); 
-						if (HAL_GetTick() - Reboot_Tick >= 3000)
-						{
-							Reboot(i);
-							Reboot_Tick = HAL_GetTick();
-						}
-					}
-					
-					else
-					{
-						Reboot_Tick = 0;
-						Shearing_Drive_Errored = NULL;
-					}
-					
-				}
-				
-				Shearing_Tick = HAL_GetTick();
-			}
+//					
+//				}
+//				
+//				Shearing_Tick = HAL_GetTick();
+		//	}
 			
-			if (Shearing_Drive_Errored == NULL && Shearing_Drive_Disconnected == NULL)
-			{
+//			if (Shearing_Drive_Errored == NULL && Shearing_Drive_Disconnected == NULL)
+//			{
 					for ( int i=0; i < 2; i++)
 					{			
-						Set_Motor_Velocity( 18 , 30 );// HAL_Delay(10); // SELECTIVE
+						Set_Motor_Velocity( 18 , 40 );// HAL_Delay(10); // SELECTIVE
 						Set_Motor_Velocity( 20 , 20 );// HAL_Delay(10); // MAIN PADDLE
 						Set_Motor_Velocity( 19 , 20 ); //HAL_Delay(10);	// SIDE PADDLE
 						//Set_Motor_Velocity( 20 , 20 ); 							// CUTTER
 					}
-			}
+			//}
 		}
 		else 
 		{	
@@ -4044,360 +4047,26 @@ void Drive_Wheel_Controls_Vel_Based(void)
 				}
 			}
 
-	//	}
+	MODE_CHANGE_FLAG = SET;
 			
-//		else
-//		{
-//			Left_Transmit_Vel = Left_Vel_Limit;
-//			Right_Transmit_Vel = Right_Vel_Limit;
-//			
-//			
-//			
-//				if (Left_Transmit_Vel != Left_Transmit_Vel_Temp)
-//				{
-//					Input_Velocity[1] = Left_Transmit_Vel;
-//					Input_Velocity[2] = Left_Transmit_Vel;
-//					
-//					for(uint8_t i=1 ; i <= 2 ; i++)
-//					{
-//						Set_Motor_Velocity(i, Left_Transmit_Vel);
-//					}
-//					Left_Transmit_Vel_Temp = Left_Transmit_Vel;
-//				}
-//			
-//			
-//			 
-//				if (Right_Transmit_Vel != Right_Transmit_Vel_Temp)
-//				{
-//					Input_Velocity[3] = Right_Transmit_Vel;
-//					Input_Velocity[4] = Right_Transmit_Vel;
-//					
-//					for(uint8_t i=3 ; i <= 4 ; i++) 
-//					{
-//						Set_Motor_Velocity(i, Right_Transmit_Vel);
-//					}
-//					Right_Transmit_Vel_Temp = Right_Transmit_Vel;
-//				}
-//			
-//		}
-			
-			
-	}	
-			
-		
-			
-//			Input_Vel = Speed * 15;
-//	
-//	
-//	if ( Joystick_Temp != Joystick || Speed != Speed_Temp)
-//	{
-//			switch(Joystick)
-//			{
-//				case 1 : Vel_Limit = Input_Vel; break;
-//				case 2 : Vel_Limit = -Input_Vel; break;
-//				case 0 : Vel_Limit = 0; break;
-//				default: break;
-//			}
-//			
-//			Joystick_Temp = Joystick;
-//			Speed_Temp = Speed;
-//	}
-//	
-//	if (Joystick != 0)
-//	{
-//		Prev_Joystick = Joystick;
-//	}
-
-
-//		Left_Vel_Limit = Vel_Limit + Left_Steering_Speed;  
-//		Right_Vel_Limit = Vel_Limit + Right_Steering_Speed;
-//	
-//	if (Joystick != 0)
-//	{
-//		if (Joystick == 1)
-//		{
-//				if ((Left_Vel_Limit > Right_Vel_Limit) && Joystick == 1)
-//				{
-//					Accel_Factor = Left_Vel_Limit / Right_Vel_Limit;
-//					L_Vel_Limit = Left_Vel_Limit;
-//					R_Vel_Limit = Left_Vel_Limit / Accel_Factor;
-//				}
-//				
-//				else if ((Right_Vel_Limit > Left_Vel_Limit) && Joystick == 1)
-//				{
-//					Accel_Factor = Right_Vel_Limit / Left_Vel_Limit;
-//					R_Vel_Limit = Right_Vel_Limit;
-//					L_Vel_Limit = Right_Vel_Limit / Accel_Factor;
-//				}
-//				
-//			
-//				else
-//				{
-//					R_Vel_Limit = Right_Vel_Limit;
-//					L_Vel_Limit = Left_Vel_Limit;
-//				}
-//	}
-//		
-//	if (Joystick == 2)
-//	{
-//			if (Left_Vel_Limit < Right_Vel_Limit)
-//				{
-//					Accel_Factor = Left_Vel_Limit / Right_Vel_Limit;
-//					L_Vel_Limit = Left_Vel_Limit;
-//					R_Vel_Limit = Left_Vel_Limit / Accel_Factor;
-//				}
-//				
-//				else if (Right_Vel_Limit < Left_Vel_Limit)
-//				{
-//					Accel_Factor = Right_Vel_Limit / Left_Vel_Limit;
-//					R_Vel_Limit = Right_Vel_Limit;
-//					L_Vel_Limit = Right_Vel_Limit / Accel_Factor;
-//				}
-//				
-//				else
-//				{
-//					R_Vel_Limit = Right_Vel_Limit;
-//					L_Vel_Limit = Left_Vel_Limit;
-//				}
-//	}
-//	}
-
-//	if (Joystick != 0)
-//	{
-//	if(Left_Vel_Limit != Left_Transmit_Vel)
-//			{
-//				if(HAL_GetTick() - left_tick_count >= 50)
-//				{
-//					if(Left_Vel_Limit > Left_Transmit_Vel)
-//					{
-//						Left_Transmit_Vel++;
-//					}
-//					
-//					else if(Left_Vel_Limit < Left_Transmit_Vel)
-//					{
-//						Left_Transmit_Vel--;
-//						
-////						if ( fabs(Motor_Velocity[3]) <= 20 ) Left_Transmit_Vel--;
-////						else if ( fabs(Motor_Velocity[3]) > 20 && fabs(Motor_Velocity[3]) <= 30 ) Left_Transmit_Vel = Left_Transmit_Vel - 3 ;
-////						else Left_Transmit_Vel = Left_Transmit_Vel - 5;
-//					}
-//					else{}
-//					
-//					for(uint8_t i=1 ; i <= 2 ; i++) { Set_Motor_Velocity(i, Left_Transmit_Vel); HAL_Delay(1);}
-//					left_tick_count = HAL_GetTick();
-//				
-//			}
-//		}
-//			
-//			if(Right_Vel_Limit != Right_Transmit_Vel)
-//			{
-//				if(HAL_GetTick() - right_tick_count >= 50)
-//				{
-//					if(Right_Vel_Limit > Right_Transmit_Vel)
-//					{
-//						Right_Transmit_Vel++;
-//					}
-//					
-//					else if(Right_Vel_Limit < Right_Transmit_Vel)
-//					{
-//						Right_Transmit_Vel--;
-//						
-////						if ( fabs(Motor_Velocity[3]) <= 20 ) Right_Transmit_Vel--;
-////						else if ( fabs(Motor_Velocity[3]) > 20 && fabs(Motor_Velocity[3]) <= 30 ) Right_Transmit_Vel = Right_Transmit_Vel - 3 ;
-////						else Right_Transmit_Vel = Right_Transmit_Vel - 5;
-//					}
-//					
-//					else{}
-//						
-//					for(uint8_t i=3 ; i <= 4 ; i++) { Set_Motor_Velocity(i, Right_Transmit_Vel); HAL_Delay(1);}
-//					right_tick_count = HAL_GetTick();
-//				}
-//			}
-//		}
-//	
-//		else
-//		{
-//			Left_Transmit_Vel = 0;
-//			Right_Transmit_Vel = 0;
-//			
-//			//if (Rover_Velocity < 5) {L_Vel_Limit = R_Vel_Limit = 0;}
-//			
-//			if (HAL_GetTick() - Vel_Tick >= 50)
-//			{
-//				if (Prev_Joystick == 1)
-//				{
-//				if (L_Vel_Limit > R_Vel_Limit)
-//				{
-//					for (uint8_t i = 1; i < 5; i++)
-//					{
-//						if (i < 3)
-//						{
-//							//if (L_Vel_Limit != L_Vel_Limit_Temp)
-//							//{
-//								Set_Motor_Velocity(i, L_Vel_Limit);
-//								L_Vel_Limit_Temp = L_Vel_Limit;
-//							//}
-//						}
-//						else
-//						{
-//							//if (R_Vel_Limit != R_Vel_Limit_Temp)
-//							//{
-//								Set_Motor_Velocity(i, R_Vel_Limit);
-//								R_Vel_Limit_Temp = R_Vel_Limit;
-//							//}
-//						}
-//					}
-//					
-//				L_Vel_Limit = L_Vel_Limit - 1;
-//				R_Vel_Limit = L_Vel_Limit / Accel_Factor;
-//				}
-//				
-//				
-//				else if (R_Vel_Limit > L_Vel_Limit)
-//				{
-//						for (uint8_t i = 1; i < 5; i++)
-//					{
-//						if (i < 3)
-//						{
-//							//if (L_Vel_Limit != L_Vel_Limit_Temp)
-//							//{
-//								Set_Motor_Velocity(i, L_Vel_Limit);
-//								L_Vel_Limit_Temp = L_Vel_Limit;
-//							//}
-//						}
-//						else
-//						{
-//							//if (R_Vel_Limit != R_Vel_Limit_Temp)
-//							//{
-//								Set_Motor_Velocity(i, R_Vel_Limit);
-//								R_Vel_Limit_Temp = R_Vel_Limit;
-//							//}
-//						}
-//					}
-//					
-//					R_Vel_Limit = R_Vel_Limit - 1;
-//				L_Vel_Limit = R_Vel_Limit / Accel_Factor;
-//				}
-//				
-//				else
-//				{
-//						for (uint8_t i = 1; i < 5; i++)
-//					{
-//						if (i < 3)
-//						{
-//							//if (L_Vel_Limit != L_Vel_Limit_Temp)
-//							//{
-//								Set_Motor_Velocity(i, L_Vel_Limit);
-//								L_Vel_Limit_Temp = L_Vel_Limit;
-//							//}
-//						}
-//						else
-//						{
-//							//if (R_Vel_Limit != R_Vel_Limit_Temp)
-//							//{
-//								Set_Motor_Velocity(i, R_Vel_Limit);
-//								R_Vel_Limit_Temp = R_Vel_Limit;
-//							//}
-//						}
-//					}
-//					
-//					R_Vel_Limit = R_Vel_Limit > 0 ? R_Vel_Limit - 1 : 0;
-//					L_Vel_Limit = L_Vel_Limit > 0 ? L_Vel_Limit - 1 : 0;
-//				}
-//			}
-//				
-//			
-//			if (Prev_Joystick == 2)
-//				{
-//				if (L_Vel_Limit < R_Vel_Limit)
-//				{
-//						for (uint8_t i = 1; i < 5; i++)
-//					{
-//						if (i < 3)
-//						{
-//							//if (L_Vel_Limit != L_Vel_Limit_Temp)
-//							//{
-//								Set_Motor_Velocity(i, L_Vel_Limit);
-//								L_Vel_Limit_Temp = L_Vel_Limit;
-//							//}
-//						}
-//						else
-//						{
-//							//if (R_Vel_Limit != R_Vel_Limit_Temp)
-//							//{
-//								Set_Motor_Velocity(i, R_Vel_Limit);
-//								R_Vel_Limit_Temp = R_Vel_Limit;
-//							//}
-//						}
-//					}
-//					
-//				L_Vel_Limit = L_Vel_Limit + 1;
-//				R_Vel_Limit = L_Vel_Limit / Accel_Factor;
-//				}
-//				
-//				
-//				else if (R_Vel_Limit < L_Vel_Limit)
-//				{
-//						for (uint8_t i = 1; i < 5; i++)
-//					{
-//						if (i < 3)
-//						{
-//							//if (L_Vel_Limit != L_Vel_Limit_Temp)
-//							//{
-//								Set_Motor_Velocity(i, L_Vel_Limit);
-//								L_Vel_Limit_Temp = L_Vel_Limit;
-//							//}
-//						}
-//						else
-//						{
-//							//if (R_Vel_Limit != R_Vel_Limit_Temp)
-//							//{
-//								Set_Motor_Velocity(i, R_Vel_Limit);
-//								R_Vel_Limit_Temp = R_Vel_Limit;
-//							//}
-//						}
-//					}
-//					
-//					R_Vel_Limit = R_Vel_Limit + 1;
-//				L_Vel_Limit = R_Vel_Limit / Accel_Factor;
-//				}
-//				
-//				else
-//				{
-//						for (uint8_t i = 1; i < 5; i++)
-//					{
-//						if (i < 3)
-//						{
-//							//if (L_Vel_Limit != L_Vel_Limit_Temp)
-//							//{
-//								Set_Motor_Velocity(i, L_Vel_Limit);
-//								L_Vel_Limit_Temp = L_Vel_Limit;
-//							//}
-//						}
-//						else
-//						{
-////							if (R_Vel_Limit != R_Vel_Limit_Temp)
-////							{
-//								Set_Motor_Velocity(i, R_Vel_Limit);
-//								R_Vel_Limit_Temp = R_Vel_Limit;
-//							//}
-//						}
-//					}
-//					
-//					R_Vel_Limit = R_Vel_Limit < 0 ? R_Vel_Limit + 1 : 0;
-//					L_Vel_Limit = L_Vel_Limit < 0 ? L_Vel_Limit + 1 : 0;
-//				}
-//			}
-//				
-//				
-//				Vel_Tick = HAL_GetTick();
-//			}
-//		
-
-		//
-		//}
+	}
+	
+	else
+	{
+		if (MODE_CHANGE_FLAG == SET)
+		{
+				for (uint8_t i = 1; i < 5; i++)
+				{
+					for (uint8_t j = 0; j < 5; j++)
+					{
+						Set_Motor_Velocity (i, 0);
+					}
+				}
+				
+				MODE_CHANGE_FLAG = NULL;
+		}
+	}
 }
-
 void New_Steering_Controls (void)
 {
 /*	If the Steering Reset Flag is SET, all the Steering wheels will return to their Home Position.	
@@ -5178,7 +4847,7 @@ Left_Macro_Speed = Right_Macro_Speed = Macro_Speed;
 				Correction_Speed = 0;
 		}
         Left_Macro_Speed = Left_Macro_Speed + Correction_Speed;
-	
+//	
 	if (Left_Macro_Speed_Temp != Left_Macro_Speed)
 	{
 			Input_Velocity[12] = Left_Macro_Speed;
