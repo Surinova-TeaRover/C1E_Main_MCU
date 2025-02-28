@@ -894,7 +894,6 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 		}
 	else{Emergency_Stop();}
 
-		
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
