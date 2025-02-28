@@ -74,10 +74,10 @@
 	#define					LR_STEER					0x14
 	#define					RF_STEER					0x12
 	#define					RR_STEER					0x13
-	#define					L_ARM							0x11
-	#define					R_ARM							0x15
-	#define					P_ARM							0x16
-	#define					LT_SENS						0x17
+//	#define					L_ARM							0x11
+//	#define					R_ARM							0x15
+//	#define					P_ARM							0x16
+//	#define					LT_SENS						0x17
 	//#define					L_VERT						0x21
 	#define					R_VERT						0x22
 	#define					C_LMT							0x07
@@ -86,7 +86,7 @@
 	#define					RL_FLAP						0x19
 	#define					RR_FLAP						0x20
 	#define					CMD_MASK					0x01F	
-	#define         IMU_SHEAR         0x21
+	#define         IMU_SHEAR         0x15
 	
 	#define					HEARTBEAT					0x01
 	#define					POS_ID						0x0C
@@ -168,7 +168,7 @@ uint8_t RxData2[8];
 uint8_t RxData2_Temp[8];
 uint8_t RxData_Temp[8];
 uint32_t TxMailbox, CAN_Count=0;
-uint8_t Node_Id[30],PREV_Node_Id[40], Received_Node_Id=0, Received_Command_Id=0;
+uint8_t Node_Id[40],PREV_Node_Id[40], Received_Node_Id=0, Received_Command_Id=0;
 uint8_t Sensor_Id[10], Axis_State[30];
 float Motor_Velocity[20], Rover_Voltage=0,Motor_Current[20], Rover_Voltage_Temp=0;uint8_t Motor_Error[20], Encoder_Error[20] , Volt_Tx=0, Volt_Tx_Temp=0;
 uint8_t LFD=1,LRD=2,RFD=3,RRD=4,LVert=5, RVert=6, Contour=7, LFS=8, LRS=9, RFS=10, RRS=11, L_Arm=12, R_Arm=13, P_Arm=14 , Upper_Width =16 , Lower_Width = 15, Cutter=17, Side_Belt = 18, Selective = 19, Paddle =20;
@@ -298,7 +298,7 @@ float Rover_Velocity = 0.0;
 
 bool JOYSTICK_STATE_FLAG = NULL, AXIS_STATE_FLAG = SET, HEARTBEAT_FLAG = SET, FET_TEMP_FLAG = SET, OPERATION_MONITOR_FLAG = NULL, MOTORS_STOP_FLAG = SET;
 uint64_t Tick_Count1 = 0, Tick_Count2 = 0;
-uint8_t Node_Id_Temp[30];
+uint8_t Node_Id_Temp[40];
 // FET_Temperature[21];
 int Node = 0, fet = 0;
 
@@ -711,7 +711,7 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan2)
 
 	}
 	
-	Rover_Velocity = (fabs(Motor_Velocity[1]) + fabs(Motor_Velocity[2]) + fabs(Motor_Velocity[3]) + fabs(Motor_Velocity[4])) / 4;
+	Rover_Velocity = (fabs(Motor_Velocity[2]) + fabs(Motor_Velocity[3]) + fabs(Motor_Velocity[4])) / 3;
 	
 	
 	FL_LPF_Angle = FL_Flap_LPF(Flap_Angle_Left, Prev_FL_LPF_Angle, ALPHA);
@@ -777,7 +777,7 @@ int main(void)
 	HAL_CAN_Start(&hcan2);HAL_Delay(1000);
 	HAL_CAN_ActivateNotification(&hcan2, CAN_IT_RX_FIFO1_MSG_PENDING);
 	
-	HAL_Delay(5000);
+	HAL_Delay(10000);
 //	for ( uint8_t i = 6 ; i < 25 ; i++ ) {	Start_Calibration_For (i, 8, 10); }
 //	for ( uint8_t i = 1 ; i < 5; i++ ) { Start_Calibration_For (6, 8, 5);Start_Calibration_For (13, 8, 5);Start_Calibration_For (12, 8, 5);Start_Calibration_For (14, 8, 5);}
 	
@@ -3205,8 +3205,8 @@ void EEPROM_Store_Data (void)
 			Store_Data = 0;
 		}
 		
-		Lead_Screw_Length = Vertical_Motor_Count * 0.5;      
-		Vertical_Angle = Lead_Screw_Length * 0.222;
+//		Lead_Screw_Length = Vertical_Motor_Count * 0.5;      
+//		Vertical_Angle = Lead_Screw_Length * 0.222;
 
 	}
 void Frame_Synchronization(void)
