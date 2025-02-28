@@ -81,12 +81,12 @@
 	//#define					L_VERT						0x21
 	#define					R_VERT						0x22
 	#define					C_LMT							0x07
-	#define					FL_FLAP						0x17
-	#define					FR_FLAP						0x18
-	#define					RL_FLAP						0x19
-	#define					RR_FLAP						0x20
+	#define					FL_FLAP						0x31//0x17
+	#define					FR_FLAP						0x33//0x18
+	#define					RL_FLAP						0x32//0x19
+	#define					RR_FLAP						0x34//0x20
 	#define					CMD_MASK					0x01F	
-	#define         IMU_SHEAR         0x21
+	#define         IMU_SHEAR         0x35
 	
 	#define					HEARTBEAT					0x01
 	#define					POS_ID						0x0C
@@ -477,6 +477,8 @@ void Left_Frame_Controls (void);
  float Top_Sensing_PID ( float Flap_Value , unsigned long long 	R_Time_Stamp );
  void All_Macro_Sensing(void);
  void New_Steering_Controls_(void);
+ void Pich_Test(void);
+ void Pitch_Control(void);
  //void Set_Motor_Position (uint8_t Axis, float Position);
 /* USER CODE END PFP */
 
@@ -891,6 +893,7 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 		Frame_Controls();
 		Dynamic_Width_Adjustment();
 		Shearing_Motors();
+		//Pitch_Test();
 		}
 	else{Emergency_Stop();}
 
@@ -3168,7 +3171,7 @@ float Pitch_Arm_PID ( float Pitch_Error , unsigned long long 	R_Time_Stamp )
 }
 void EEPROM_Store_Data (void)
 {
-	//Vertical_Motor_Count = Vertical_Motor_Value + Absolute_Position_Float[6];
+	Vertical_Motor_Count = Vertical_Motor_Value + Absolute_Position_Float[6];
 	Left_Macro_Motor_Count = Left_Macro_Motor_Value + Absolute_Position_Float[12];
 	Right_Macro_Motor_Count = Right_Macro_Motor_Value + Absolute_Position_Float[13];
 	//Pitch_Arm_Motor_Count = Pitch_Arm_Motor_Value + Absolute_Position_Float[14];
@@ -3176,7 +3179,7 @@ void EEPROM_Store_Data (void)
 	Upper_Width_Motor_Count = Upper_Width_Motor_Value + Absolute_Position_Float[16];
 
 																																																											
-	//memcpy(&Write_Value[1], &Vertical_Motor_Count, sizeof(Vertical_Motor_Count));
+	memcpy(&Write_Value[1], &Vertical_Motor_Count, sizeof(Vertical_Motor_Count));
 	memcpy(&Write_Value[5], &Left_Macro_Motor_Count, sizeof(Left_Macro_Motor_Count));
 	memcpy(&Write_Value[9], &Right_Macro_Motor_Count, sizeof(Right_Macro_Motor_Count));
 	//memcpy(&Write_Value[13], &Pitch_Arm_Motor_Count, sizeof(Pitch_Arm_Motor_Count));
@@ -3205,8 +3208,8 @@ void EEPROM_Store_Data (void)
 			Store_Data = 0;
 		}
 		
-		Lead_Screw_Length = Vertical_Motor_Count * 0.5;      
-		Vertical_Angle = Lead_Screw_Length * 0.222;
+//		Lead_Screw_Length = Vertical_Motor_Count * 0.5;      
+//		Vertical_Angle = Lead_Screw_Length * 0.222;
 
 	}
 void Frame_Synchronization(void)
@@ -3988,7 +3991,7 @@ void New_Drive_Controls_V2(void)
 
 void Drive_Wheel_Controls_Vel_Based(void)
 {
-	if (Mode != 2)
+	if (Mode == 1)
 	{
 	Input_Vel = Speed * 15;
 	Input_Vel = Steering_Mode != 1 ? 15 : Input_Vel;
@@ -5047,7 +5050,7 @@ void UART_tx(void) {
 				
 }
 	else if(Mode==3){
-		
+		Macro_Speed=0;
 //		if (HAL_GetTick() - Flaps_Tick <= 1500)
 //	{
 //		for (uint8_t i = 28; i < 32; i++)
@@ -5202,20 +5205,20 @@ void Pitch_Control(void)
 {
 	
 
-	if (HAL_GetTick() - Imu_Tick >= 1000)
-	{
-		if(Node_Id[27] == Node_Id_Temp[27])
-		{
-			IMU_Disconnected = SET;
-		}
-		
-		else
-		{
-			IMU_Disconnected = NULL;
-		}
-		
-		Imu_Tick = HAL_GetTick();
-	}
+//	if (HAL_GetTick() - Imu_Tick >= 1000)
+//	{
+//		if(Node_Id[27] == Node_Id_Temp[27])
+//		{
+//			IMU_Disconnected = SET;
+//		}
+//		
+//		else
+//		{
+//			IMU_Disconnected = NULL;
+//		}
+//		
+//		Imu_Tick = HAL_GetTick();
+//	}
 	
 	Lead_Screw_Length = Vertical_Motor_Count * 0.5;        //to be included in EEPROM function
 	Vertical_Angle = Lead_Screw_Length * 0.222;            // to be included in EEPROM function
@@ -5230,13 +5233,41 @@ void Pitch_Control(void)
 	if (Pitch_Arm_Speed != Pitch_Arm_Speed_Temp)
 	{
 		Input_Velocity[14] = Pitch_Arm_Speed;
-		Set_Motor_Velocity(14, Pitch_Arm_Speed);
+		//Set_Motor_Velocity(14, Pitch_Arm_Speed);
 		Pitch_Arm_Speed_Temp = Pitch_Arm_Speed;
 	}
 	
 }
 
+void Pich_Test(void)
+{
+	if(Mode == 3)
+{
+ if (Joystick_Temp != Joystick)
+        {
+            switch (Joystick)
+            {
+                case 0: Pitch_Arm_Speed = 0;   break;
+                case 1: Pitch_Arm_Speed = -5;  break;
+                case 2: Pitch_Arm_Speed = 5; break;
+                default: Pitch_Arm_Speed = 0;  break;
+            }
+            Joystick_Temp = Joystick;
+        }
+				
+}
 
+else 
+{
+	Pitch_Arm_Speed = 0;
+}
+		if (Pitch_Arm_Speed_Temp != Pitch_Arm_Speed)
+		{
+			Set_Motor_Velocity(14,Pitch_Arm_Speed);
+			Pitch_Arm_Speed_Temp = Pitch_Arm_Speed;
+		}
+
+}
 /* USER CODE END 4 */
 
 /**
