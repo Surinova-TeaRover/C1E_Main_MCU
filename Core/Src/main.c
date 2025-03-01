@@ -777,11 +777,7 @@ int main(void)
 	HAL_CAN_Start(&hcan2);HAL_Delay(1000);
 	HAL_CAN_ActivateNotification(&hcan2, CAN_IT_RX_FIFO1_MSG_PENDING);
 	
-	HAL_Delay(10000);
-//	for ( uint8_t i = 6 ; i < 25 ; i++ ) {	Start_Calibration_For (i, 8, 10); }
-//	for ( uint8_t i = 1 ; i < 5; i++ ) { Start_Calibration_For (6, 8, 5);Start_Calibration_For (13, 8, 5);Start_Calibration_For (12, 8, 5);Start_Calibration_For (14, 8, 5);}
-	
-	
+	HAL_Delay(5000);
 	/* UART INITS */
 	MX_UART4_Init();
 	MX_UART5_Init();
@@ -859,23 +855,13 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 	//HAL_Delay(10000);
 	BUZZER_OFF;
 	
-//	Set_Motor_Velocity(LFS, -15);
-//	Set_Motor_Velocity(LRS, -15);
-//	HAL_Delay(3000);
-//	Set_Motor_Velocity(LFS, 0);
-//	Set_Motor_Velocity(LRS, 0);
-//	HAL_Delay(3000);
-	//Initiate_Process = SET;
-//	Error_Handler();
-//HAL_TIM_Base_Start_IT(&htim14);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-		
-	
 		test++;
 		BT_State = BT_READ;
 		Joystick_Reception();
@@ -885,7 +871,6 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 		if(OPERATION_MONITOR_FLAG==NULL)
 		{
 		Drive_Wheel_Controls_Vel_Based();
-//////		Left_Frame_Controls();
 		New_Steering_Controls();
 		All_Macro_Sensing();
 		Frame_Controls();
@@ -2337,7 +2322,7 @@ void Operations_Monitor(void)
 	{
 		for (uint8_t i = 1; i < 20; i++)
 		{
-			if (Input_Velocity[i] != 0 && Motor_Velocity[i] == 0 && Motor_Current[i] >= 1.5)
+			if (Input_Velocity[i] != 0 && Motor_Velocity[i] == 0 && Motor_Current[i] >= 1.5f)
 			{
 		
 				if (HAL_GetTick() - Motor_Tick >= 3000)
@@ -2951,10 +2936,10 @@ void Dynamic_Width_Adjustment (void)
 void Dynamic_Width_Corrections(void)
 {
 	
-	Half_Track_Width = (Track_Width + (Lower_Width_Motor_Count * 0.25)) / 2;
+	Half_Track_Width = (Track_Width + (Lower_Width_Motor_Count * 0.25f)) / 2;
 	Half_Wheel_Base = Wheel_Base / 2;
 	Zero_Turn_Angle = atan(Half_Wheel_Base / Half_Track_Width);
-	Zero_Turn_Angle = Zero_Turn_Angle * (180 / 3.14);
+	Zero_Turn_Angle = Zero_Turn_Angle * (180 / 3.14f);
 }
 
 void Shearing_Motors (void)
@@ -3207,8 +3192,8 @@ void New_Steering_Controls (void)
 								LF_Error = (-Inner_Angle - (LF_Steering)) ;		
 								LR_Error = (Inner_Angle - (LR_Steering)) ; 		
 								
-								LF_Error = LF_Error <= 0.8 && LF_Error >= -0.8 ? 0 : LF_Error;
-								LR_Error = LR_Error <= 0.8 && LR_Error >= -0.8 ? 0 : LR_Error;
+								LF_Error = LF_Error <= 0.8f && LF_Error >= -0.8f ? 0 : LF_Error;
+								LR_Error = LR_Error <= 0.8f && LR_Error >= -0.8f ? 0 : LR_Error;
 
 								LF_Speed = LF_Error * STEERING_KP;
 								LR_Speed = LR_Error * STEERING_KP;							
@@ -3222,8 +3207,8 @@ void New_Steering_Controls (void)
 								RF_Error = (-Outer_Angle - (-RF_Steering)) ;
 								RR_Error = (-Outer_Angle - (RR_Steering)) ; 
 								
-								RF_Error = RF_Error <= 0.8 && RF_Error >= -0.8 ? 0 : RF_Error;
-								RR_Error = RR_Error <= 0.8 && RR_Error >= -0.8 ? 0 : RR_Error;
+								RF_Error = RF_Error <= 0.8f && RF_Error >= -0.8f ? 0 : RF_Error;
+								RR_Error = RR_Error <= 0.8f && RR_Error >= -0.8f ? 0 : RR_Error;
 								
 								RF_Speed = RF_Error * STEERING_KP;
 								RR_Speed = RR_Error * STEERING_KP;
@@ -3241,8 +3226,8 @@ void New_Steering_Controls (void)
 								RF_Error = (Inner_Angle - (-RF_Steering)) ;			
 								RR_Error = (Inner_Angle - (RR_Steering)) ; 
 
-								RF_Error = RF_Error <= 0.8 && RF_Error >= -0.8 ? 0 : RF_Error;
-								RR_Error = RR_Error <= 0.8 && RR_Error >= -0.8 ? 0 : RR_Error;
+								RF_Error = RF_Error <= 0.8f && RF_Error >= -0.8f ? 0 : RF_Error;
+								RR_Error = RR_Error <= 0.8f && RR_Error >= -0.8f ? 0 : RR_Error;
 
 								RF_Speed = RF_Error * STEERING_KP;
 								RR_Speed = RR_Error * STEERING_KP;	
@@ -3256,8 +3241,8 @@ void New_Steering_Controls (void)
 								LF_Error = (-Outer_Angle- (LF_Steering)) ;
 								LR_Error = (Outer_Angle_2 - (LR_Steering)) ; 
 								
-								LF_Error = LF_Error <= 0.8 && LF_Error >= -0.8 ? 0 : LF_Error;
-								LR_Error = LR_Error <= 0.8 && LR_Error >= -0.8 ? 0 : LR_Error;
+								LF_Error = LF_Error <= 0.8f && LF_Error >= -0.8f ? 0 : LF_Error;
+								LR_Error = LR_Error <= 0.8f && LR_Error >= -0.8f ? 0 : LR_Error;
 								
 								LF_Speed = LF_Error * STEERING_KP;
 								LR_Speed = LR_Error * STEERING_KP;
@@ -3455,7 +3440,7 @@ void UART_tx(void)
         switch (currentCommand) {
             case '1': { 
                 if (Rover_Voltage >= 40 && Rover_Voltage <= 55) {
-                    Main_Bt_Percentage = (6.67f * Rover_Voltage) - 273.33;
+                    Main_Bt_Percentage = (6.67f * Rover_Voltage) - 273.33f;
                 } else {
                     Main_Bt_Percentage = 0;
                 }
@@ -3834,14 +3819,14 @@ void Pitch_Control(void)
 		Imu_Tick = HAL_GetTick();
 	}
 	
-	Lead_Screw_Length = Vertical_Motor_Count * 0.5;        //to be included in EEPROM function
-	Vertical_Angle = Lead_Screw_Length * 0.222;            // to be included in EEPROM function
+	Lead_Screw_Length = Vertical_Motor_Count * 0.5f;        //to be included in EEPROM function
+	Vertical_Angle = Lead_Screw_Length * 0.222f;            // to be included in EEPROM function
 	
 	Pitch_Target_Angle = Vertical_Angle;
 	Shear_Angle = Shear_Pitch_Home_Pos - Shear_Pitch;
 	
 	Pitch_Arm_Error = Pitch_Target_Angle - Shear_Angle;
-	Pitch_Arm_Error = Pitch_Arm_Error <= 0.5 && Pitch_Arm_Error >= -0.5	? 0 : Pitch_Arm_Error;
+	Pitch_Arm_Error = Pitch_Arm_Error <= 0.5f && Pitch_Arm_Error >= -0.5f	? 0 : Pitch_Arm_Error;
 	Pitch_Arm_Speed = Pitch_Arm_PID ( Pitch_Arm_Error , NULL);
 	
 	if (Pitch_Arm_Speed != Pitch_Arm_Speed_Temp)
