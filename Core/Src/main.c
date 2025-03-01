@@ -187,7 +187,7 @@ float Shear_Roll = 0, Shear_Pitch = 0;
 uint16_t Track_Width = 1800, Min_Track_Width = 1800, Zero_Turn_Angle = 27, Wheel_Base = 900; //Track_Width = 1730, Min_Track_Width = 1730
 uint16_t Steer_Angle[5];
 float LF_Steering=0, LR_Steering=0, RF_Steering=0, RR_Steering=0;	
-float LF_HomePos =9, LR_HomePos= 689 , RF_HomePos= 450 , RR_HomePos = 496;	// -->	HOME POSITIONS LF_HomePos = 190, LR_HomePos= 87 , RF_HomePos= 220 , RR_HomePos = 623;
+float LF_HomePos =10, LR_HomePos= 688 , RF_HomePos= 458 , RR_HomePos = 498;	// -->	HOME POSITIONS LF_HomePos = 190, LR_HomePos= 87 , RF_HomePos= 220 , RR_HomePos = 623;
 float LF_Speed=0, LR_Speed=0, RF_Speed=0, RR_Speed=0 , LF_Speed_Temp =0, LR_Speed_Temp =0 , RF_Speed_Temp=0, RR_Speed_Temp=0, LF_Error=0, LR_Error=0, RF_Error=0, RR_Error=0;		
 //int LF_Speed=0, LR_Speed=0, RF_Speed=0, RR_Speed=0 , LF_Speed_Temp =0, LR_Speed_Temp =0 , RF_Speed_Temp=0, RR_Speed_Temp=0;
 //float LF_Error=0, LR_Error=0, RF_Error=0, RR_Error=0;
@@ -361,7 +361,7 @@ long RA_P=0,RA_I=0,RA_D=0;
 float RA_Kp=1,RA_Ki=0,RA_Kd=0;
 
 long P_P=0,P_I=0,P_D=0;
-float P_Kp=1,P_Ki=0,P_Kd=0;
+float P_Kp=5,P_Ki=0,P_Kd=0;
 
 float RightArm_Out=0,RA_Error_Change=0,RA_Error_Slope=0,RA_Error_Area=0,RA_Prev_Error=0;
 int8_t Test_Read,Test_Write;
@@ -377,7 +377,7 @@ uint16_t Half_Track_Width = 0, Half_Wheel_Base = 0;
 
 /////////////////////////////////////////////////////OPERATION MONITOR VARIABLES	////////////////////////////////////////
 uint64_t Heartbeat_Tick = 0, Drive_Error_Tick = 0, Fet_Temp_Tick =0, Overload_Tick = 0, Motor_Tick = 0, speed_time = 0, Joystick_Tick = 0, Vertical_Limit_Tick = 0, Contour_Limit_Tick = 0, Pitch_Limit_Tick = 0, Vertical_Tick = 0, Vert_Resp_Tick = 0, Contour_Tick = 0, Cont_Resp_Tick = 0, Pitch_Tick = 0, Pitch_Resp_Tick = 0;
-bool Drive_Disconnected = NULL, Sensor_Disconnected = NULL, Drive_Errored = NULL, FET_Temp_Exceeded = NULL, Motor_Overloaded = NULL, E_Stop = NULL, Joystick_Disconnected = NULL, Vertical_Limit_Exceeded = NULL, Contour_Limit_Exceeded = NULL, Pitch_Limit_Exceeded = NULL, EEPROM_Error = NULL, Vertical_Not_Responding = NULL, Contour_Not_Responding = NULL, Pitch_Not_Responding = NULL;
+bool Drive_Disconnected = NULL, Sensor_Disconnected = NULL, Drive_Errored = NULL, FET_Temp_Exceeded = NULL, Motor_Overloaded = NULL, E_Stop = NULL, Joystick_Disconnected = NULL, Vertical_Limit_Exceeded = NULL, Contour_Limit_Exceeded = NULL, Pitch_Limit_Exceeded = NULL, EEPROM_Error = NULL, Vertical_Not_Responding = NULL, Contour_Not_Responding = NULL, Pitch_Not_Responding = NULL, Steering_Boundary_Flag = NULL;
 float FET_Temperature[20];
 uint8_t Speed_Ref = 0;
 float Vertical_Error = 0, Contour_Error = 0, Pitch_Error = 0;
@@ -391,7 +391,7 @@ bool Shearing_Drive_Errored = NULL, Shearing_Drive_Disconnected = NULL, Flaps_Di
 
 ////////////////////////////////////////////////////PITCH VARIABLES////////////////////////////////////////////////////////////
 
-float Lead_Screw_Length = 0, Vertical_Angle = 0, Pitch_Target_Angle = 0, Shear_Angle = 0, Shear_Pitch_Home_Pos = 0, Pitch_Arm_Error = 0;
+float Lead_Screw_Length = 0, Vertical_Angle = 0, Pitch_Target_Angle = 0, Shear_Angle = 0, Shear_Pitch_Home_Pos = -64.1, Pitch_Arm_Error = 0;
 float Shear_Roll_Home_Pos = 0, Pitch_Angle = 0, Contour_Angle = 0;
 /*                                                 PITCH VARIABLES                                                         */
 
@@ -413,6 +413,9 @@ char outputBuffer[1024],Main_Battery[42],Left_IMU_Data[50],Right_IMU_Data[50],Pi
 char Node_ID_To_Name[][10]={"","LCW","RFW","RRW","R_Vert","L_Contour","R_Contour","RFS","RRS","","","PitchArm","L_Macro","R_Macro","Width"};
 float LF = 0, LR = 0;
 int err_count = 0;
+
+float Prev_Vel = 0, Current_Vel = 0;
+uint64_t Dummy_Tick = 0, Dummy_Tick_2 = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -477,6 +480,7 @@ void Left_Frame_Controls (void);
  float Top_Sensing_PID ( float Flap_Value , unsigned long long 	R_Time_Stamp );
  void All_Macro_Sensing(void);
  void New_Steering_Controls_(void);
+ void Pitch_Control(void);
  //void Set_Motor_Position (uint8_t Axis, float Position);
 /* USER CODE END PFP */
 
@@ -634,7 +638,12 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan1)
 		
 		case (RR_STEER): 	Steer_Angle[4] = CAN_SPI_READ(RxData);	 			RR_Steering = New_Sensor_Pos ( Steer_Angle[4] , RR_HomePos ) ;						Sensor_Id[6]++;Node_Id[26]++; break;
 		
-    default: break;
+
+//		case (LF_STEER): 	Steer_Angle[1] = CAN_SPI_READ(RxData);  		if ((Steer_Angle[1] <= 100 && Steer_Angle[1] >= 0 )|| (Steer_Angle[1] >= 640 && Steer_Angle[1] <= 720)){	LF_Steering = New_Sensor_Pos ( Steer_Angle[1] , LF_HomePos ) ; Node_Id[23]++;}	else {Steering_Boundary_Flag = SET;} break;
+//		case (LR_STEER): 	Steer_Angle[2] = CAN_SPI_READ(RxData);			if ((Steer_Angle[2] <= 58 && Steer_Angle[2] >= 0) || (Steer_Angle[2] >= 598 && Steer_Angle[2] <= 720)){	LR_Steering = New_Sensor_Pos ( Steer_Angle[2] , LR_HomePos ) ;	Node_Id[24]++;} else {Steering_Boundary_Flag = SET;}break; 
+//		case (RF_STEER): 	Steer_Angle[3] = CAN_SPI_READ(RxData);			if (Steer_Angle[3] >= 368 && Steer_Angle[3] <= 548)	{RF_Steering = New_Sensor_Pos ( Steer_Angle[3] , RF_HomePos ) ;	Node_Id[25]++;}	else {Steering_Boundary_Flag = SET;}break;
+//		case (RR_STEER): 	Steer_Angle[4] = CAN_SPI_READ(RxData);	 		if (Steer_Angle[4] >= 408 && Steer_Angle[4] <= 588)	{RR_Steering = New_Sensor_Pos ( Steer_Angle[4] , RR_HomePos ) ;	Node_Id[26]++;} else {Steering_Boundary_Flag = SET;}break;
+		default: break;
 	}
 
 			RxHeader.StdId=0;
@@ -885,18 +894,53 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 		if(OPERATION_MONITOR_FLAG==NULL)
 		{
 		Drive_Wheel_Controls_Vel_Based();
-//////		Left_Frame_Controls();
+////		Left_Frame_Controls();
 		New_Steering_Controls();
 		All_Macro_Sensing();
 		Frame_Controls();
 		Dynamic_Width_Adjustment();
 		Shearing_Motors();
+			Pitch_Control();
 		}
 	else{Emergency_Stop();}
 
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+		
+//		if (Pitch_Arm_Speed_Temp != Pitch_Arm_Speed)
+//	{
+//			//Input_Velocity[13] = Right_Macro_Speed;
+//			Set_Motor_Velocity(14, Pitch_Arm_Speed);
+//			Pitch_Arm_Speed_Temp = Pitch_Arm_Speed;
+//	}
+//	
+//	Current_Vel = Pitch_Arm_Speed;
+//	
+//	if (Prev_Vel != 0 && Current_Vel == 0)
+//	{
+////		if (HAL_GetTick() - Dummy_Tick_2 >= 100)
+////		{
+//			Start_Calibration_For(14, 1, 5);
+//			//Dummy_Tick_2 = HAL_GetTick();
+//		//}
+//		
+//		if (HAL_GetTick() - Dummy_Tick >= 200)
+//		{
+//			Start_Calibration_For(14, 8, 5);
+//			Dummy_Tick = HAL_GetTick();
+//		}
+//		Prev_Vel = Current_Vel;
+//	}
+//	
+//	else
+//	{
+//		Prev_Vel = Current_Vel;
+//		Dummy_Tick = 0;
+//		Dummy_Tick_2 = 0;
+//	}
+	
+	
   }
   /* USER CODE END 3 */
 }
@@ -1487,7 +1531,7 @@ void Read_EEPROM_Data(void)
 //	EEPROM_PageErase (3);				
 	EEPROM_Read(60, 0, (uint8_t *)Read_Value, sizeof(Read_Value));
 
-	//memcpy(&Vertical_Motor_Value, &Read_Value[1],4 );
+	memcpy(&Vertical_Motor_Value, &Read_Value[1],4 );
 	memcpy(&Left_Macro_Motor_Value, &Read_Value[5],4 );
 	memcpy(&Right_Macro_Motor_Value, &Read_Value[9],4 );
 	//memcpy(&Pitch_Arm_Motor_Value, &Read_Value[13],4 );
@@ -2774,7 +2818,7 @@ void Operations_Monitor(void)
 		Pitch_Tick = HAL_GetTick();
 	}
 		
-	OPERATION_MONITOR_FLAG = Drive_Disconnected == SET || Sensor_Disconnected == SET || Drive_Errored == SET || Joystick_Disconnected ? SET : NULL;// && FET_Temp_Exceeded == SET && Motor_Overloaded == SET && E_Stop == SET && Joystick_Disconnected == SET && Vertical_Limit_Exceeded == SET && Contour_Limit_Exceeded == SET && Pitch_Limit_Exceeded == SET && Vertical_Not_Responding == SET && Contour_Not_Responding == SET ? SET : NULL;
+	OPERATION_MONITOR_FLAG = Drive_Disconnected == SET || Sensor_Disconnected == SET || Drive_Errored == SET || Joystick_Disconnected || Steering_Boundary_Flag == SET ? SET : NULL;// && FET_Temp_Exceeded == SET && Motor_Overloaded == SET && E_Stop == SET && Joystick_Disconnected == SET && Vertical_Limit_Exceeded == SET && Contour_Limit_Exceeded == SET && Pitch_Limit_Exceeded == SET && Vertical_Not_Responding == SET && Contour_Not_Responding == SET ? SET : NULL;
 }
 
 void Emergency_Stop(void)
@@ -3168,7 +3212,7 @@ float Pitch_Arm_PID ( float Pitch_Error , unsigned long long 	R_Time_Stamp )
 }
 void EEPROM_Store_Data (void)
 {
-	//Vertical_Motor_Count = Vertical_Motor_Value + Absolute_Position_Float[6];
+	Vertical_Motor_Count = Vertical_Motor_Value + Absolute_Position_Float[6];
 	Left_Macro_Motor_Count = Left_Macro_Motor_Value + Absolute_Position_Float[12];
 	Right_Macro_Motor_Count = Right_Macro_Motor_Value + Absolute_Position_Float[13];
 	//Pitch_Arm_Motor_Count = Pitch_Arm_Motor_Value + Absolute_Position_Float[14];
@@ -3176,7 +3220,7 @@ void EEPROM_Store_Data (void)
 	Upper_Width_Motor_Count = Upper_Width_Motor_Value + Absolute_Position_Float[16];
 
 																																																											
-	//memcpy(&Write_Value[1], &Vertical_Motor_Count, sizeof(Vertical_Motor_Count));
+	memcpy(&Write_Value[1], &Vertical_Motor_Count, sizeof(Vertical_Motor_Count));
 	memcpy(&Write_Value[5], &Left_Macro_Motor_Count, sizeof(Left_Macro_Motor_Count));
 	memcpy(&Write_Value[9], &Right_Macro_Motor_Count, sizeof(Right_Macro_Motor_Count));
 	//memcpy(&Write_Value[13], &Pitch_Arm_Motor_Count, sizeof(Pitch_Arm_Motor_Count));
@@ -5202,30 +5246,32 @@ void Pitch_Control(void)
 {
 	
 
-	if (HAL_GetTick() - Imu_Tick >= 1000)
-	{
-		if(Node_Id[27] == Node_Id_Temp[27])
-		{
-			IMU_Disconnected = SET;
-		}
-		
-		else
-		{
-			IMU_Disconnected = NULL;
-		}
-		
-		Imu_Tick = HAL_GetTick();
-	}
+//	if (HAL_GetTick() - Imu_Tick >= 1000)
+//	{
+//		if(Node_Id[27] == Node_Id_Temp[27])
+//		{
+//			IMU_Disconnected = SET;
+//		}
+//		
+//		else
+//		{
+//			IMU_Disconnected = NULL;
+//		}
+//		
+//		Imu_Tick = HAL_GetTick();
+//	}
 	
-	Lead_Screw_Length = Vertical_Motor_Count * 0.5;        //to be included in EEPROM function
+	Lead_Screw_Length = Vertical_Motor_Count * 0.25;        //to be included in EEPROM function
 	Vertical_Angle = Lead_Screw_Length * 0.222;            // to be included in EEPROM function
 	
-	Pitch_Target_Angle = Vertical_Angle;
+	Pitch_Target_Angle = roundf(Vertical_Angle * 10) / 10;
 	Shear_Angle = Shear_Pitch_Home_Pos - Shear_Pitch;
 	
 	Pitch_Arm_Error = Pitch_Target_Angle - Shear_Angle;
-	Pitch_Arm_Error = Pitch_Arm_Error <= 0.5 && Pitch_Arm_Error >= -0.5	? 0 : Pitch_Arm_Error;
-	Pitch_Arm_Speed = Pitch_Arm_PID ( Pitch_Arm_Error , NULL);
+	Pitch_Arm_Error = Pitch_Arm_Error <= 1 && Pitch_Arm_Error >= -1	? 0 : Pitch_Arm_Error;
+	Pitch_Arm_Speed = -Pitch_Arm_PID ( Pitch_Arm_Error , NULL);
+	
+	Pitch_Arm_Speed = Pitch_Arm_Speed >= 10 ? 10 : Pitch_Arm_Speed <= -10 ? -10 : Pitch_Arm_Speed;
 	
 	if (Pitch_Arm_Speed != Pitch_Arm_Speed_Temp)
 	{
