@@ -2723,7 +2723,7 @@ void Operations_Monitor(void)
 	{
 		for (uint8_t i = 1; i < 20; i++)
 		{
-			if (Input_Velocity[i] != 0 && Motor_Velocity[i] == 0 && Motor_Current[i] >= 1.5)
+			if (Input_Velocity[i] != 0 && Motor_Velocity[i] == 0 && Motor_Current[i] >= 1.5f)
 			{
 		
 				if (HAL_GetTick() - Motor_Tick >= 3000)
@@ -3473,12 +3473,12 @@ void Top_Sensing_Roll(void)
 				Shear_Height_Diff = L_Arm_Travel - R_Arm_Travel;
 				Shear_Roll_Angle = (atan ( Shear_Height_Diff / 2245 )) * (180/3.14);
 
-				Pitch_Compensation_mm = fabs(Shear_Height_Diff * 0.435) ;
+				Pitch_Compensation_mm = fabs(Shear_Height_Diff * 0.435f) ;
 			// Pitch_Compensation_Rot = Pitch_Compensation_mm / 3.32 ;
 				Pitch_Compensation_mm = Shear_Roll_Angle > 0 ? -Pitch_Compensation_mm : Pitch_Compensation_mm;
 
 			// Pitch_Target = (Left_Arm_Current_Pos * 0.81 ) + Pitch_Compensation_Rot;
-				Pitch_Target = ((L_Arm_Travel + Pitch_Compensation_mm) / 3.32) * 0.81 ;
+				Pitch_Target = ((L_Arm_Travel + Pitch_Compensation_mm) / 3.32f) * 0.81f ;
 				Pitch_Error = Pitch_Target - Pitch_Arm_Current_Pos;
 				Pitch_Arm_Speed  = Pitch_Arm_PID ( Pitch_Error , NULL );
 					
@@ -3613,7 +3613,7 @@ void Dynamic_Width_Adjustment (void)
 void Dynamic_Width_Corrections(void)
 {
 	
-	Half_Track_Width = (Track_Width + (Lower_Width_Motor_Count * 0.25)) / 2;
+	Half_Track_Width = (Track_Width + (Lower_Width_Motor_Count * 0.25f)) / 2;
 	Half_Wheel_Base = Wheel_Base / 2;
 	Zero_Turn_Angle = atan(Half_Wheel_Base / Half_Track_Width);
 	Zero_Turn_Angle = Zero_Turn_Angle * (180 / 3.14);
@@ -3711,10 +3711,10 @@ void Position_Flap_Sensing(void)
 		if ( Front_Left_Bush )
 		{
 				
-			Arm_Angle = (FL_Angle /3.2) -1 ;//3.2
+			Arm_Angle = (FL_Angle /3.2f) -1 ;//3.2
 			Tri_Arm_Pos = (Arm_Angle/360)*600;
 			Left_Arm_Pos = Right_Arm_Pos = Tri_Arm_Pos;
-			Pitch_Arm_Pos = Tri_Arm_Pos * 0.6082 ;
+			Pitch_Arm_Pos = Tri_Arm_Pos * 0.6082f ;
 		}
 		else 
 		{
@@ -4211,8 +4211,8 @@ void New_Steering_Controls_ (void)
 								LF_Error = (-Inner_Angle - (LFS_Filtered)) ;		
 								LR_Error = (Inner_Angle - (LRS_Filtered)) ; 		
 								
-								LF_Error = LF_Error <= 0.8 && LF_Error >= -0.8 ? 0 : LF_Error;
-								LR_Error = LR_Error <= 0.8 && LR_Error >= -0.8 ? 0 : LR_Error;
+								LF_Error = LF_Error <= 0.8f && LF_Error >= -0.8f ? 0 : LF_Error;
+								LR_Error = LR_Error <= 0.8f && LR_Error >= -0.8f ? 0 : LR_Error;
 
 								LF_Speed = LF_Error * STEERING_KP;
 								LR_Speed = LR_Error * STEERING_KP;							
@@ -4226,8 +4226,8 @@ void New_Steering_Controls_ (void)
 								RF_Error = (-Outer_Angle - (-RFS_Filtered)) ;
 								RR_Error = (-Outer_Angle - (RRS_Filtered)) ; 
 								
-								RF_Error = RF_Error <= 0.8 && RF_Error >= -0.8 ? 0 : RF_Error;
-								RR_Error = RR_Error <= 0.8 && RR_Error >= -0.8 ? 0 : RR_Error;
+								RF_Error = RF_Error <= 0.8f && RF_Error >= -0.8f ? 0 : RF_Error;
+								RR_Error = RR_Error <= 0.8f && RR_Error >= -0.8f ? 0 : RR_Error;
 								
 								RF_Speed = RF_Error * STEERING_KP;
 								RR_Speed = RR_Error * STEERING_KP;
@@ -4245,8 +4245,8 @@ void New_Steering_Controls_ (void)
 								RF_Error = (Inner_Angle - (-RFS_Filtered)) ;			
 								RR_Error = (Inner_Angle - (RRS_Filtered)) ; 
 
-								RF_Error = RF_Error <= 0.8 && RF_Error >= -0.8 ? 0 : RF_Error;
-								RR_Error = RR_Error <= 0.8 && RR_Error >= -0.8 ? 0 : RR_Error;
+								RF_Error = RF_Error <= 0.8f && RF_Error >= -0.8f ? 0 : RF_Error;
+								RR_Error = RR_Error <= 0.8f && RR_Error >= -0.8f ? 0 : RR_Error;
 
 								RF_Speed = RF_Error * STEERING_KP;
 								RR_Speed = RR_Error * STEERING_KP;	
@@ -4260,8 +4260,8 @@ void New_Steering_Controls_ (void)
 								LF_Error = (-Outer_Angle- (LFS_Filtered)) ;
 								LR_Error = (Outer_Angle_2 - (LRS_Filtered)) ; 
 								
-								LF_Error = LF_Error <= 0.8 && LF_Error >= -0.8 ? 0 : LF_Error;
-								LR_Error = LR_Error <= 0.8 && LR_Error >= -0.8 ? 0 : LR_Error;
+								LF_Error = LF_Error <= 0.8f && LF_Error >= -0.8f ? 0 : LF_Error;
+								LR_Error = LR_Error <= 0.8f && LR_Error >= -0.8f ? 0 : LR_Error;
 								
 								LF_Speed = LF_Error * STEERING_KP;
 								LR_Speed = LR_Error * STEERING_KP;
@@ -4490,8 +4490,8 @@ void New_Steering_Controls (void)
 								LF_Error = (-Inner_Angle - (LF_Steering)) ;		
 								LR_Error = (Inner_Angle - (LR_Steering)) ; 		
 								
-								LF_Error = LF_Error <= 0.8 && LF_Error >= -0.8 ? 0 : LF_Error;
-								LR_Error = LR_Error <= 0.8 && LR_Error >= -0.8 ? 0 : LR_Error;
+								LF_Error = LF_Error <= 0.8f && LF_Error >= -0.8f ? 0 : LF_Error;
+								LR_Error = LR_Error <= 0.8f && LR_Error >= -0.8f ? 0 : LR_Error;
 
 								LF_Speed = LF_Error * STEERING_KP;
 								LR_Speed = LR_Error * STEERING_KP;							
@@ -4505,8 +4505,8 @@ void New_Steering_Controls (void)
 								RF_Error = (-Outer_Angle - (-RF_Steering)) ;
 								RR_Error = (-Outer_Angle - (RR_Steering)) ; 
 								
-								RF_Error = RF_Error <= 0.8 && RF_Error >= -0.8 ? 0 : RF_Error;
-								RR_Error = RR_Error <= 0.8 && RR_Error >= -0.8 ? 0 : RR_Error;
+								RF_Error = RF_Error <= 0.8f && RF_Error >= -0.8f ? 0 : RF_Error;
+								RR_Error = RR_Error <= 0.8f && RR_Error >= -0.8f ? 0 : RR_Error;
 								
 								RF_Speed = RF_Error * STEERING_KP;
 								RR_Speed = RR_Error * STEERING_KP;
@@ -4524,8 +4524,8 @@ void New_Steering_Controls (void)
 								RF_Error = (Inner_Angle - (-RF_Steering)) ;			
 								RR_Error = (Inner_Angle - (RR_Steering)) ; 
 
-								RF_Error = RF_Error <= 0.8 && RF_Error >= -0.8 ? 0 : RF_Error;
-								RR_Error = RR_Error <= 0.8 && RR_Error >= -0.8 ? 0 : RR_Error;
+								RF_Error = RF_Error <= 0.8f && RF_Error >= -0.8f ? 0 : RF_Error;
+								RR_Error = RR_Error <= 0.8f && RR_Error >= -0.8f ? 0 : RR_Error;
 
 								RF_Speed = RF_Error * STEERING_KP;
 								RR_Speed = RR_Error * STEERING_KP;	
@@ -4539,8 +4539,8 @@ void New_Steering_Controls (void)
 								LF_Error = (-Outer_Angle- (LF_Steering)) ;
 								LR_Error = (Outer_Angle_2 - (LR_Steering)) ; 
 								
-								LF_Error = LF_Error <= 0.8 && LF_Error >= -0.8 ? 0 : LF_Error;
-								LR_Error = LR_Error <= 0.8 && LR_Error >= -0.8 ? 0 : LR_Error;
+								LF_Error = LF_Error <= 0.8f && LF_Error >= -0.8f ? 0 : LF_Error;
+								LR_Error = LR_Error <= 0.8f && LR_Error >= -0.8f ? 0 : LR_Error;
 								
 								LF_Speed = LF_Error * STEERING_KP;
 								LR_Speed = LR_Error * STEERING_KP;
@@ -4861,7 +4861,7 @@ void UART_tx(void) {
         switch (currentCommand) {
             case '1': { 
                 if (Rover_Voltage >= 40 && Rover_Voltage <= 55) {
-                    Main_Bt_Percentage = (6.67f * Rover_Voltage) - 273.33;
+                    Main_Bt_Percentage = (6.67f * Rover_Voltage) - 273.33f;
                 } else {
                     Main_Bt_Percentage = 0;
                 }
@@ -5266,8 +5266,8 @@ void Pitch_Control(void)
 //		Imu_Tick = HAL_GetTick();
 //	}
 	
-	Lead_Screw_Length = Vertical_Motor_Count * 0.25;        //to be included in EEPROM function
-	Vertical_Angle = Lead_Screw_Length * 0.222;            // to be included in EEPROM function
+	Lead_Screw_Length = Vertical_Motor_Count * 0.25f;        //to be included in EEPROM function
+	Vertical_Angle = Lead_Screw_Length * 0.222f;            // to be included in EEPROM function
 	
 	Pitch_Target_Angle = roundf(Vertical_Angle * 10) / 10;
 	Shear_Angle = Shear_Pitch_Home_Pos - Shear_Pitch;
