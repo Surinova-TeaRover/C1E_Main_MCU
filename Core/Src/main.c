@@ -170,7 +170,7 @@ uint8_t RxData_Temp[8];
 uint32_t TxMailbox, CAN_Count=0;
 uint8_t Node_Id[40],PREV_Node_Id[40], Received_Node_Id=0, Received_Command_Id=0;
 uint8_t Sensor_Id[10], Axis_State[30];
-float Motor_Velocity[20], Rover_Voltage=0,Motor_Current[20], Rover_Voltage_Temp=0;uint8_t Motor_Error[20], Encoder_Error[20] , Volt_Tx=0, Volt_Tx_Temp=0;
+float Motor_Velocity[21], Rover_Voltage=0,Motor_Current[21], Rover_Voltage_Temp=0;uint8_t Motor_Error[20], Encoder_Error[20] , Volt_Tx=0, Volt_Tx_Temp=0;
 uint8_t LFD=1,LRD=2,RFD=3,RRD=4,LVert=5, RVert=6, Contour=7, LFS=8, LRS=9, RFS=10, RRS=11, L_Arm=12, R_Arm=13, P_Arm=14 , Upper_Width =16 , Lower_Width = 15, Cutter=17, Side_Belt = 18, Selective = 19, Paddle =20;
 
 /* 							CAN_VARIABLES 						*/
@@ -895,11 +895,11 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 		Drive_Wheel_Controls_Vel_Based();
 ////Left_Frame_Controls();
 		New_Steering_Controls();
-		All_Macro_Sensing();
-  	Frame_Controls();
-		Dynamic_Width_Adjustment();
+		//All_Macro_Sensing();
+  	//Frame_Controls();
+		//Dynamic_Width_Adjustment();
 		Shearing_Motors();
-		Pitch_Control();
+		//Pitch_Control();
 		}
 	else{Emergency_Stop();}
 
@@ -1508,7 +1508,7 @@ void Set_Motor_Velocity ( uint8_t Axis , float Velocity )
 		Velocity = (Axis == 1 || Axis == 2) ? -Velocity : Velocity;   //for zero turn
 	}
 	Velocity = (Axis == 9 || Axis == 2) ? -Velocity : Velocity;
-	CAN_Transmit(Axis,VELOCITY,Velocity,4,DATA); HAL_Delay(2);
+	CAN_Transmit(Axis,VELOCITY,Velocity,4,DATA); HAL_Delay(1);
 }
 
 
@@ -2713,6 +2713,12 @@ void Operations_Monitor(void)
 		fet = 0;
 	}
 	
+	for (uint8_t i = 18; i <= 20; i++)
+	{
+		CAN_Transmit(i, IQ, 0, 4, REMOTE);
+		HAL_Delay(2);
+	}
+	
 	if (HAL_GetTick() - Overload_Tick >= 1000)
 	{
 		for (uint8_t i = 1; i < 20; i++)
@@ -2817,7 +2823,7 @@ void Operations_Monitor(void)
 		Pitch_Tick = HAL_GetTick();
 	}
 		
-	OPERATION_MONITOR_FLAG = Drive_Disconnected == SET || Sensor_Disconnected == SET || Drive_Errored == SET || Joystick_Disconnected || Steering_Boundary_Flag == SET ? SET : NULL;// && FET_Temp_Exceeded == SET && Motor_Overloaded == SET && E_Stop == SET && Joystick_Disconnected == SET && Vertical_Limit_Exceeded == SET && Contour_Limit_Exceeded == SET && Pitch_Limit_Exceeded == SET && Vertical_Not_Responding == SET && Contour_Not_Responding == SET ? SET : NULL;
+	OPERATION_MONITOR_FLAG = Drive_Disconnected == SET || Sensor_Disconnected == SET || Drive_Errored == SET || Joystick_Disconnected || Steering_Boundary_Flag == SET || FET_Temp_Exceeded == SET ? SET : NULL;// && FET_Temp_Exceeded == SET && Motor_Overloaded == SET && E_Stop == SET && Joystick_Disconnected == SET && Vertical_Limit_Exceeded == SET && Contour_Limit_Exceeded == SET && Pitch_Limit_Exceeded == SET && Vertical_Not_Responding == SET && Contour_Not_Responding == SET ? SET : NULL;
 }
 
 void Emergency_Stop(void)
@@ -2830,8 +2836,8 @@ void Emergency_Stop(void)
 		Input_Velocity[i] = 0;
 	}
 	
-//	if (Rover_Velocity < 3)
-//	{
+	if (Rover_Velocity < 3 && Rover_Velocity == NAN)
+	{
 		if (Drive_Disconnected == SET)
 		{
 			for (uint8_t i = 1; i < 21; i++)
@@ -2926,9 +2932,9 @@ void Emergency_Stop(void)
 				Pitch_Not_Responding = NULL;
 			}
 		}
-	//}
+	}
 	
-	OPERATION_MONITOR_FLAG =  Drive_Disconnected == NULL && Sensor_Disconnected == NULL && Drive_Errored == NULL && !Joystick_Disconnected ? NULL : SET;// && FET_Temp_Exceeded == NULL && Motor_Overloaded == NULL && E_Stop == NULL && Joystick_Disconnected == NULL && Vertical_Limit_Exceeded == NULL && Contour_Limit_Exceeded == NULL && Pitch_Limit_Exceeded == NULL && Vertical_Not_Responding == NULL && Contour_Not_Responding == NULL && Pitch_Not_Responding == NULL ? NULL : SET;
+	OPERATION_MONITOR_FLAG =  Drive_Disconnected == NULL && Sensor_Disconnected == NULL && Drive_Errored == NULL && !Joystick_Disconnected && FET_Temp_Exceeded == NULL ? NULL : SET;// && FET_Temp_Exceeded == NULL && Motor_Overloaded == NULL && E_Stop == NULL && Joystick_Disconnected == NULL && Vertical_Limit_Exceeded == NULL && Contour_Limit_Exceeded == NULL && Pitch_Limit_Exceeded == NULL && Vertical_Not_Responding == NULL && Contour_Not_Responding == NULL && Pitch_Not_Responding == NULL ? NULL : SET;
 	if (OPERATION_MONITOR_FLAG == NULL) {BUZZER_OFF;}
 	
 	
@@ -4085,7 +4091,7 @@ void Drive_Wheel_Controls_Vel_Based(void)
 					else{}
 					Input_Velocity[1] = Left_Transmit_Vel;
 					Input_Velocity[2] = Left_Transmit_Vel;
-					for(uint8_t i=1 ; i <= 2 ; i++) { Set_Motor_Velocity(i, Left_Transmit_Vel); HAL_Delay(1);}
+					for(uint8_t i=1 ; i <= 2 ; i++) { Set_Motor_Velocity(i, Left_Transmit_Vel); } //HAL_Delay(1);
 					left_tick_count = HAL_GetTick();
 				
 			}
@@ -4114,7 +4120,7 @@ void Drive_Wheel_Controls_Vel_Based(void)
 						
 					Input_Velocity[3] = Right_Transmit_Vel;
 					Input_Velocity[4] = Right_Transmit_Vel;
-					for(uint8_t i=3 ; i <= 4 ; i++) { Set_Motor_Velocity(i, Right_Transmit_Vel); HAL_Delay(1);}
+					for(uint8_t i=3 ; i <= 4 ; i++) { Set_Motor_Velocity(i, Right_Transmit_Vel); }  //HAL_Delay(1);
 					right_tick_count = HAL_GetTick();
 				}
 			}
