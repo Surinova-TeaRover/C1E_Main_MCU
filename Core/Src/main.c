@@ -678,7 +678,7 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan2)
 	
 	switch (RxHeader2.StdId)
 	{
-		//case (IMU_SHEAR) : Shear_Roll = ((int16_t)(RxData2[1]<<8 | RxData2[0]))/16.0;	Shear_Pitch = ((int16_t)(RxData2[3]<<8 | RxData2[2]))/16.0;    Node_Id[27]++; break;
+		case (IMU_SHEAR) : Shear_Roll = ((int16_t)(RxData2[1]<<8 | RxData2[0]))/16.0;	Shear_Pitch = ((int16_t)(RxData2[3]<<8 | RxData2[2]))/16.0;    Node_Id[27]++; break;
 		
 		case (FL_FLAP) : 	FL_Raw = CAN_SPI_READ(RxData2);      FL_Angle = New_Sensor_Pos (FL_Raw, FL_Home_Pos); 	Update_Array(Flap_Data_Array, ARRAY_SIZE, FL_Angle);				Node_Id[28]++; break;
 		
@@ -709,7 +709,7 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan2)
 		
 		case SNERR_ID:  							Encoder_Error[Received_Node_Id]		= CAN_Reception(LSB); 					  		 	 break;
 		
-		case IQM_ID:  								Motor_Current[Received_Node_Id]		= CAN_Reception(MSB); 					  		 	 break;
+		case IQM_ID:  								Motor_Current[Received_Node_Id]		= fabs(CAN_Reception(MSB)); 					  		 	 break;
 		
 		case VOLTAGE: 								memcpy(&Rover_Voltage, RxData2, 4);	 																		 	 break;
 		
@@ -895,11 +895,11 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 		Drive_Wheel_Controls_Vel_Based();
 ////Left_Frame_Controls();
 		New_Steering_Controls();
-		//All_Macro_Sensing();
-  	//Frame_Controls();
-		//Dynamic_Width_Adjustment();
+		All_Macro_Sensing();
+  	Frame_Controls();
+		Dynamic_Width_Adjustment();
 		Shearing_Motors();
-		//Pitch_Control();
+		Pitch_Control();
 		}
 	else{Emergency_Stop();}
 
@@ -2713,17 +2713,17 @@ void Operations_Monitor(void)
 		fet = 0;
 	}
 	
-	for (uint8_t i = 18; i <= 20; i++)
-	{
-		CAN_Transmit(i, IQ, 0, 4, REMOTE);
-		HAL_Delay(2);
-	}
+//	for (uint8_t i = 18; i <= 20; i++)
+//	{
+//		CAN_Transmit(i, IQ, NULL, 4, REMOTE);
+//		HAL_Delay(2);
+//	}
 	
 	if (HAL_GetTick() - Overload_Tick >= 1000)
 	{
 		for (uint8_t i = 1; i < 20; i++)
 		{
-			if (Input_Velocity[i] != 0 && Motor_Velocity[i] == 0 && Motor_Current[i] >= 1.5f)
+			if ( Motor_Current[i] >= 10)
 			{
 		
 				if (HAL_GetTick() - Motor_Tick >= 3000)
@@ -2731,15 +2731,14 @@ void Operations_Monitor(void)
 					Motor_Overloaded = SET;
 					count = HAL_GetTick() - Motor_Tick;
 					Motor_Tick = HAL_GetTick();
+					break;
 				}
 			}
 		
-			else
-			{
-				Motor_Tick = HAL_GetTick();
-			}
+			
 		}
 		Overload_Tick = HAL_GetTick();
+		//Motor_Tick = HAL_GetTick();
 	}
 	
 	
@@ -2830,14 +2829,17 @@ void Emergency_Stop(void)
 {
 	BUZZER_ON;
 	
-	for (uint8_t i = 1; i <= 20; i++)
+
+	
+//	if (Rover_Velocity < 3 || Rover_Velocity == NAN)
+//	{
+		
+			for (uint8_t i = 1; i <= 20; i++)
 	{
 		Set_Motor_Velocity(i , 0);
 		Input_Velocity[i] = 0;
 	}
 	
-	if (Rover_Velocity < 3 && Rover_Velocity == NAN)
-	{
 		if (Drive_Disconnected == SET)
 		{
 			for (uint8_t i = 1; i < 21; i++)
@@ -2932,7 +2934,7 @@ void Emergency_Stop(void)
 				Pitch_Not_Responding = NULL;
 			}
 		}
-	}
+	//}
 	
 	OPERATION_MONITOR_FLAG =  Drive_Disconnected == NULL && Sensor_Disconnected == NULL && Drive_Errored == NULL && !Joystick_Disconnected && FET_Temp_Exceeded == NULL ? NULL : SET;// && FET_Temp_Exceeded == NULL && Motor_Overloaded == NULL && E_Stop == NULL && Joystick_Disconnected == NULL && Vertical_Limit_Exceeded == NULL && Contour_Limit_Exceeded == NULL && Pitch_Limit_Exceeded == NULL && Vertical_Not_Responding == NULL && Contour_Not_Responding == NULL && Pitch_Not_Responding == NULL ? NULL : SET;
 	if (OPERATION_MONITOR_FLAG == NULL) {BUZZER_OFF;}
@@ -4476,7 +4478,7 @@ void New_Steering_Controls (void)
 							/*///////////////////////////////////////////////////////////////////////////////////	ALL WHEEL STEERING  - STEERING FUNCTION ///////////////////////////////////////////////////////////////////////////////	*/
 							
 							//Inner_Angle =	(( Pot_Angle / 2 ) - 45);
-								Inner_Angle = (Pot_Angle - 90) / 3;
+								Inner_Angle = (Pot_Angle - 90) / 3.6;
 		
 							
 							if ( Inner_Angle <= -1 )  // Left Turn of the Rover
