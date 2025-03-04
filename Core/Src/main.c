@@ -299,7 +299,6 @@ float Rover_Velocity = 0.0;
 bool JOYSTICK_STATE_FLAG = NULL, AXIS_STATE_FLAG = SET, HEARTBEAT_FLAG = SET, FET_TEMP_FLAG = SET, OPERATION_MONITOR_FLAG = NULL, MOTORS_STOP_FLAG = SET;
 uint64_t Tick_Count1 = 0, Tick_Count2 = 0;
 uint8_t Node_Id_Temp[40];
-// FET_Temperature[21];
 int Node = 0, fet = 0;
 
 
@@ -679,7 +678,7 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan2)
 	
 	switch (RxHeader2.StdId)
 	{
-		case (IMU_SHEAR) : Shear_Roll = ((int16_t)(RxData2[1]<<8 | RxData2[0]))/16.0;	Shear_Pitch = ((int16_t)(RxData2[3]<<8 | RxData2[2]))/16.0;    Node_Id[27]++; break;
+		//case (IMU_SHEAR) : Shear_Roll = ((int16_t)(RxData2[1]<<8 | RxData2[0]))/16.0;	Shear_Pitch = ((int16_t)(RxData2[3]<<8 | RxData2[2]))/16.0;    Node_Id[27]++; break;
 		
 		case (FL_FLAP) : 	FL_Raw = CAN_SPI_READ(RxData2);      FL_Angle = New_Sensor_Pos (FL_Raw, FL_Home_Pos); 	Update_Array(Flap_Data_Array, ARRAY_SIZE, FL_Angle);				Node_Id[28]++; break;
 		
@@ -702,7 +701,7 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan2)
 		
 		case ENEST_ID:  							Motor_Velocity[Received_Node_Id]	= CAN_Reception(MSB);  Absolute_Position_Reception(Received_Node_Id); 	   break;		
 
-		case SENS_EST:  							Motor_Velocity[Received_Node_Id]	= CAN_Reception(MSB); 				  			 	 break;
+		//case SENS_EST:  							Motor_Velocity[Received_Node_Id]	= CAN_Reception(MSB); 				  			 	 break;
 		
 		case MERR_ID:  								Motor_Error[Received_Node_Id]			= CAN_Reception(MSB); 								 	 break;
 		
@@ -714,7 +713,7 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan2)
 		
 		case VOLTAGE: 								memcpy(&Rover_Voltage, RxData2, 4);	 																		 	 break;
 		
-		//case FET_TEMP:                FET_Temperature[Received_Node_Id] = CAN_Reception(LSB); 					  		 	 break;
+		case FET_TEMP:                FET_Temperature[Received_Node_Id] = CAN_Reception(LSB); 					  		 	 break;
 
 		default: 																																													  	 	 break;
 
