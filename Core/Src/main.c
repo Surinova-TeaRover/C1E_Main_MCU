@@ -413,6 +413,8 @@ char Node_ID_To_Name[][10]={"","LCW","RFW","RRW","R_Vert","L_Contour","R_Contour
 float LF = 0, LR = 0;
 int err_count = 0;
 
+uint8_t Bt_data[8];
+
 float Prev_Vel = 0, Current_Vel = 0;
 uint64_t Dummy_Tick = 0, Dummy_Tick_2 = 0;
 /* USER CODE END PV */
@@ -480,6 +482,7 @@ void Left_Frame_Controls (void);
  void All_Macro_Sensing(void);
  void New_Steering_Controls_(void);
  void Pitch_Control(void);
+ void Joystick_Reception_V2(void);
  //void Set_Motor_Position (uint8_t Axis, float Position);
 /* USER CODE END PFP */
 
@@ -553,10 +556,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	BT_State1 = BT_READ_1;
 	//if (huart -> Instance == UART5)
 	//{
-			HAL_UART_Receive_DMA(&huart5,BT_Rx ,sizeof(BT_Rx));
+			//HAL_UART_Receive_DMA(&huart5,BT_Rx ,sizeof(BT_Rx));
 			BT_Count++;
 //	}
-	
+			HAL_UART_Receive_IT(&huart4,Bt_data,sizeof(Bt_data));
 //	if (huart -> Instance == UART4)
 //	{
 //		HAL_UART_Receive_IT(&huart4,(uint8_t*)Rx_Data ,sizeof(Rx_Data));
@@ -794,7 +797,8 @@ int main(void)
 	MX_UART4_Init();
 	MX_UART5_Init();
 	//HAL_UART_Receive_IT(&huart5,BT_Rx ,sizeof(BT_Rx));
-	HAL_UART_Receive_DMA(&huart5,BT_Rx ,sizeof(BT_Rx));
+	//HAL_UART_Receive_DMA(&huart5,BT_Rx ,sizeof(BT_Rx));
+	HAL_UART_Receive_IT(&huart4,Bt_data,sizeof(Bt_data));
 	/* UART INITS */
 	
 //	Left_IMU_State = ( Sensor_Id[1] == 0 || Sensor_Id[2]  == 0 ) ? NULL : SET ;
@@ -886,7 +890,8 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 	
 		test++;
 		BT_State = BT_READ;
-		Joystick_Reception();
+		//Joystick_Reception();
+		Joystick_Reception_V2();
 		EEPROM_Store_Data();
 		Operations_Monitor();
 		
@@ -5287,7 +5292,20 @@ void Pitch_Control(void)
 	
 }
 
-
+void Joystick_Reception_V2(void)
+{
+//	HAL_UART_Receive_IT(&huart5,Bt_data,sizeof(Bt_data));
+	if((Bt_data[0]==0xAA && Bt_data[7]==0xFF ))
+		{
+			Mode = Bt_data[1];
+			Speed = Bt_data[2];
+			Steering_Mode = Bt_data[3];
+			Pot_Angle =Bt_data[4] ;
+			Pot_Angle=180-Pot_Angle;
+			Joystick= Bt_data[5];
+			Shearing = Bt_data[6];
+		}
+}
 /* USER CODE END 4 */
 
 /**
