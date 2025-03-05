@@ -409,7 +409,7 @@ volatile uint8_t commandReceived = 0;
 volatile uint8_t sendContinuouslyFlag = 0;
 float Main_Bt_Percentage = 0;	
 char outputBuffer[1024],Main_Battery[42],Left_IMU_Data[50],Right_IMU_Data[50],Pitch_IMU_Data[50];
-char Node_ID_To_Name[][10]={"","LCW","RFW","RRW","R_Vert","L_Contour","R_Contour","RFS","RRS","","","PitchArm","L_Macro","R_Macro","Width"};
+char Node_ID_To_Name[][10]={"","LFW","LRW","RFW","RRW","","Vert","Contour","LFS","LRS","RFS","RRS","L_Macro","R_Macro","Pitch_Arm","L_Width","U_Width"};
 float LF = 0, LR = 0;
 int err_count = 0;
 
@@ -475,6 +475,7 @@ void Left_Frame_Controls (void);
  void Steering_Pos_Controls (void);
  void Start_Continuous_Sending(char command);
  void UART_tx(void);
+ void Initial_Msg(void);
  void Flap_Sensor_Pos(double Sensor_Value, double Zero_Pos);
  float Top_Sensing_PID ( float Flap_Value , unsigned long long 	R_Time_Stamp );
  void All_Macro_Sensing(void);
@@ -551,21 +552,21 @@ double RRS_LPF(double input, double prev_output, double alpha)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	BT_State1 = BT_READ_1;
-	//if (huart -> Instance == UART5)
-	//{
+	if (huart -> Instance == UART5)
+	{
 			HAL_UART_Receive_DMA(&huart5,BT_Rx ,sizeof(BT_Rx));
 			BT_Count++;
-//	}
+	}
 	
-//	if (huart -> Instance == UART4)
-//	{
-//		HAL_UART_Receive_IT(&huart4,(uint8_t*)Rx_Data ,sizeof(Rx_Data));
-//		if (BT_State1  == 1) 
-//		{
-//			currentCommand=Rx_Data[0];
-//			UART_tx();
-//		} 
-//	}
+	if (huart -> Instance == UART4)
+	{
+		HAL_UART_Receive_IT(&huart4,(uint8_t*)Rx_Data ,sizeof(Rx_Data));
+		if (BT_State1  == 1) 
+		{
+			currentCommand=Rx_Data[0];
+			UART_tx();
+		} 
+	}
 }
 /* 							UART RECEPTION INTERRUPTS 						*/
 void Absolute_Position_Reception( uint8_t Node_Id )
@@ -795,6 +796,8 @@ int main(void)
 	MX_UART5_Init();
 	//HAL_UART_Receive_IT(&huart5,BT_Rx ,sizeof(BT_Rx));
 	HAL_UART_Receive_DMA(&huart5,BT_Rx ,sizeof(BT_Rx));
+	
+	HAL_UART_Receive_IT(&huart4,(uint8_t*)Rx_Data ,sizeof(Rx_Data));
 	/* UART INITS */
 	
 //	Left_IMU_State = ( Sensor_Id[1] == 0 || Sensor_Id[2]  == 0 ) ? NULL : SET ;
@@ -886,6 +889,7 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 	
 		test++;
 		BT_State = BT_READ;
+		Initial_Msg();
 		Joystick_Reception();
 		EEPROM_Store_Data();
 		Operations_Monitor();
@@ -899,7 +903,7 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
   	Frame_Controls();
 		Dynamic_Width_Adjustment();
 		Shearing_Motors();
-		Pitch_Control();
+		//Pitch_Control();
 		}
 	else{Emergency_Stop();}
 
@@ -2822,7 +2826,7 @@ void Operations_Monitor(void)
 		Pitch_Tick = HAL_GetTick();
 	}
 		
-	OPERATION_MONITOR_FLAG = Drive_Disconnected == SET || Sensor_Disconnected == SET || Drive_Errored == SET || Joystick_Disconnected || Steering_Boundary_Flag == SET || FET_Temp_Exceeded == SET ? SET : NULL;// && FET_Temp_Exceeded == SET && Motor_Overloaded == SET && E_Stop == SET && Joystick_Disconnected == SET && Vertical_Limit_Exceeded == SET && Contour_Limit_Exceeded == SET && Pitch_Limit_Exceeded == SET && Vertical_Not_Responding == SET && Contour_Not_Responding == SET ? SET : NULL;
+	OPERATION_MONITOR_FLAG = Drive_Disconnected == SET || Sensor_Disconnected == SET || Drive_Errored == SET || Joystick_Disconnected || FET_Temp_Exceeded == SET ? SET : NULL;// && FET_Temp_Exceeded == SET && Motor_Overloaded == SET && E_Stop == SET && Joystick_Disconnected == SET && Vertical_Limit_Exceeded == SET && Contour_Limit_Exceeded == SET && Pitch_Limit_Exceeded == SET && Vertical_Not_Responding == SET && Contour_Not_Responding == SET ? SET : NULL;
 }
 
 void Emergency_Stop(void)
@@ -4835,7 +4839,7 @@ void Initial_Msg(void)
 {
 		//BT_State1 = BT_READ_1;
 	  if (BT_State1 == 1 && message_sent == 0) {
-        HAL_UART_Transmit_IT(&huart5, (uint8_t*)Tx_Initial_msg, sizeof(Tx_Initial_msg));
+        HAL_UART_Transmit_IT(&huart4, (uint8_t*)Tx_Initial_msg, sizeof(Tx_Initial_msg));
         message_sent = 1;
     }
 		else if (BT_State1 == 0) {
@@ -4850,6 +4854,12 @@ void Initial_Msg(void)
 				Uart_Time = HAL_GetTick();
 			}
 		}
+		
+//		if((HAL_GetTick()-Timt_Batt)>10000){
+//	Tx_Voltage=Rover_Voltage < 44 ? 1 : 0;
+//	HAL_UART_Transmit(&huart5,&Tx_Voltage,sizeof(Tx_Voltage), 1000);
+//	Timt_Batt=HAL_GetTick();
+//}
 }
 
 void Start_Continuous_Sending(char command)
@@ -4868,147 +4878,96 @@ void UART_tx(void) {
                     Main_Bt_Percentage = 0;
                 }
                 len = snprintf(Main_Battery, sizeof(Main_Battery), "Voltage: %f\nPercentage: %f\n", Rover_Voltage, Main_Bt_Percentage);
-                HAL_UART_Transmit_IT(&huart5, (uint8_t*)Main_Battery, len);
+                HAL_UART_Transmit_IT(&huart4, (uint8_t*)Main_Battery, len);
                 break;
             }
 
-//           	case '2':{
-// len = snprintf(outputBuffer, sizeof(outputBuffer), "\nOPERATION_MONITOR_FLAG: %d \n", OPERATION_MONITOR_FLAG);
-//if(Drive_Errored){
-//	for (int8_t i = 1; i < 20; i++)
-//	{
-//		if (i != 9 && i != 10 && i!=16 && i!=17)
-//		{
-//		if (Axis_State[i] != 8) { 
-//			len += snprintf(outputBuffer + len, sizeof(outputBuffer) - len, "Axis State Flag(%s): %d\n",Node_ID_To_Name[i],i);
-//		}
-//}}}
-//if (Drive_Disconnected) {
-//    for (int8_t i = 1; i < 20; i++) {
-//        if (i != 9 && i != 10 && i!=16 && i!=17&& Node_Id[i] == Node_Id_Temp[i]) {
-//            len += snprintf(outputBuffer + len, sizeof(outputBuffer) - len, "Drive_Disconnected (%s): %d\n",Node_ID_To_Name[i],i);
-//        }
-//    }
-//}
+		case '2':{
+					len = snprintf(outputBuffer, sizeof(outputBuffer), "\nOPERATION_MONITOR_FLAG: %d \n", OPERATION_MONITOR_FLAG);
+					
+					if(Drive_Errored){
+	for (int8_t i = 1; i < 21; i++)
+	{
+		if (i != 5 && i!=17)
+		{
+		if (Axis_State[i] != 8) { 
+			len += snprintf(outputBuffer + len, sizeof(outputBuffer) - len, "Drive_Errored(%s): %d\n",Node_ID_To_Name[i],i);
+		}
+}}}
+					
+		if (Drive_Disconnected) {
+    for (int8_t i = 1; i < 21; i++) {
+        if (i != 5 && i!=17 && Node_Id[i] == Node_Id_Temp[i]) {
+            len += snprintf(outputBuffer + len, sizeof(outputBuffer) - len, "Drive_Disconnected (%s): %d\n",Node_ID_To_Name[i],i);
+        }
+    }
+}
 
-//if (Sensor_Disconnected) {
-//    for (int8_t i = 25; i < 29; i++) {
-//        if (Node_Id[i] == Node_Id_Temp[i]) {
-//            len += snprintf(outputBuffer + len, sizeof(outputBuffer) - len, "Sensor_Disconnected: %d\n",i);
-//        }}
-//}
+		if (Sensor_Disconnected) {
+    for (int8_t i = 21; i <= 27; i++) {
+        if (Node_Id[i] == Node_Id_Temp[i]) {
+            len += snprintf(outputBuffer + len, sizeof(outputBuffer) - len, "Sensor_Disconnected: %d\n",i);
+        }}
+		}
+		
+		if (Joystick_Disconnected) {
+    len += snprintf(outputBuffer + len, sizeof(outputBuffer) - len, 
+                    "Joystick_Disconnected ");
+		
+	}
+		
+	if(FET_Temp_Exceeded){
+	for (int8_t i = 1; i < 17; i++)
+		{
+			if (i != 5)
+			{		
+				if(FET_Temperature[i] >= 90) {
+				len+=snprintf(outputBuffer+len,sizeof(outputBuffer)-len,"FET_Temp_Exceeded (%s): %d\n ",Node_ID_To_Name[i],i);
+				}}}	  
+		}
+					HAL_UART_Transmit_IT(&huart4, (uint8_t*)outputBuffer, len);
+					break;
+	}
 
-//if (VERTICAL_LIMIT_EXCEEDED || CONTOUR_LIMIT_EXCEEDED || PITCH_LIMIT_EXCEEDED || E_Stop) {
-//    len += snprintf(outputBuffer + len, sizeof(outputBuffer) - len, 
-//                    "VERTICAL_LIMIT_EXCEEDED: %d\nCONTOUR_LIMIT_EXCEEDED: %d\nPITCH_LIMIT_EXCEEDED: %d\nE_Stop: %d\n",
-//                    VERTICAL_LIMIT_EXCEEDED, CONTOUR_LIMIT_EXCEEDED, PITCH_LIMIT_EXCEEDED, E_Stop);
-//}
-
-//if (BT_DISCONNECTED || BT_SYNC_Failed) {
-//    len += snprintf(outputBuffer + len, sizeof(outputBuffer) - len, 
-//                    "BT_DISCONNECTED: %d\n BT_SYNC_Failed: %d\nBT_State: %d\n", 
-//                    BT_DISCONNECTED,BT_SYNC_Failed,BT_State);
-//}
-
-//if(FET_Temp_Exceeded){
-//	for (int8_t i = 1; i < 15; i++)
-//		{
-//			if (i != 9 && i != 10)
-//			{		
-//				if(FET_Temperature[i] >= 90) {
-//				len+=snprintf(outputBuffer+len,sizeof(outputBuffer)-len,"FET_TEMP_EXCEEDED (%s): %d\n ",Node_ID_To_Name[i],i);
-//				}}}	  
-//}
-
-//if(LOW_BATTERY){
-//    len+=snprintf(outputBuffer+len,sizeof(outputBuffer)-len,"LOW_BATTERY : %d\n ",LOW_BATTERY);
-//}
-//if(VERTICAL_OUT_OF_SYNC){
-//	len+=snprintf(outputBuffer+len,sizeof(outputBuffer)-len,"VERTICAL_OUT_OF_SYNC \n Right_Vertical_Error : %f\n Left_Vertical_error : %f\n ",R_Vert_Error,Left_Vertical_Error);
-//}
-//if(CONTOUR_OUT_OF_SYNC){
-//len+=snprintf(outputBuffer+len,sizeof(outputBuffer)-len,"CONTOUR_OUT_OF_SYNC \n Right_Contour_Error : %f\n Left_Contour_error : %f\n ",R_Contour_Error,L_Contour_Error);
-//}
-// if(VERTICAL_NOT_RESPONDING){
-//	 len+=snprintf(outputBuffer+len,sizeof(outputBuffer)-len,"VERTICAL_NOT_RESPONDING \n Right_Vertical_Error : %f\n Left_Vertical_error : %f\n R_Vert_Speed : %d\n Left_Frame_Speed : %d\n",R_Vert_Error,Left_Vertical_Error,R_Vert_Speed,Left_Frame_Speed);
-//}
-//if(CONTOUR_NOT_RESPONDING){
-//	len+=snprintf(outputBuffer+len,sizeof(outputBuffer)-len,"CONTOUR_NOT_RESPONDING \n Right_Contour_Error : %f\n Left_Contour_error : %f\n Left_Contur_Pos : %f\n Right_Contour_Pos : %f\n",R_Contour_Error,L_Contour_Error,Left_Contour_Pos,Right_Contour_Pos);
-//}
-//if(PITCH_NOT_RESPONDING){
-// len+=snprintf(outputBuffer+len,sizeof(outputBuffer)-len,"PITCH_NOT_RESPONDING \n Pitch_Arm_Error : %f\n Pitch_Arm_Data : %f\n Pitch_Arm_Speed : %f\n ",Pitch_Arm_Error,Pitch_Arm_Data,Pitch_Arm_Speed);
-//}
-//if(STEERING_LIMIT_EXCEEDED){
-//	len+=snprintf(outputBuffer+len,sizeof(outputBuffer)-len,"STEERING_LIMIT_EXCEEDED : %d\nRFS_Encoder_Angle : %f\nRRS_Encoder_Angle : %f\n ",STEERING_LIMIT_EXCEEDED,RFS_Encoder_Angle,RRS_Encoder_Angle);
-//}
-//if(Motor_Overloaded){
-//	for (int8_t i = 1; i < 15; i++)
-//			{
-//				if (i != 9 && i != 10)
-//				{
-//					if(Overload_Flag==SET){
-//						len+=snprintf(outputBuffer+len,sizeof(outputBuffer)-len,"MOTOR_OVERLOADED (%s) : %d\n ",Node_ID_To_Name[i],i);
-//					}}}
-//}
-//if(EEPROM_ERROR){
-//	len+=snprintf(outputBuffer+len,sizeof(outputBuffer)-len,"EEPROM_ERROR : %d\n ",EEPROM_ERROR);
-//}
-//if(MACRO_DESYNC){
-//	len+=snprintf(outputBuffer+len,sizeof(outputBuffer)-len,"MACRO_DESYNC : %d\nRight_Macro_Count : %f\nLeft_Macro_Count : %f\n ",MACRO_DESYNC,Right_Macro_Count,Left_Macro_Count);
-//}
-//if (OPERATION_MONITOR_FLAG != SET) {
-//    len += snprintf(outputBuffer + len, sizeof(outputBuffer) - len, 
-//			"AXIS_STATE_FLAG: %d\nDrive_Disconnected: %d\nSensor_Disconnected: %d\nVERTICAL_LIMIT_EXCEEDED: %d\n"
-//		"CONTOUR_LIMIT_EXCEEDED: %d\nPITCH_LIMIT_EXCEEDED: %d\nE_Stop: %d\nBT_DISCONNECTED: %d\nBT_SYNC_FAILED: %d\n"
-//		"BT_STATE: %d\nFRAME_TWISTED: %d\nFET_TEMP_EXCEEDED: %d\nLOW_BATTERY: %d\nVERTICAL_OUT_OF_SYNC : %d\nCONTOUR OUT OF SYNC : %d\n"
-//		"VERTICAL_NOT_RESPONDING : %d\nCONTOUR_NOT_RESPONDING : %d\nPITCH_NOT_RESPONDING : %d\n STEERING_LIMIT_EXCEEDED :%d\n MOTOR_OVERLOADED : %d\n EEPROM_ERROR : %d\n MACRO_DESYNC : %d\n", 
-//                    AXIS_STATE_FLAG,Drive_Disconnected, Sensor_Disconnected, VERTICAL_LIMIT_EXCEEDED, 
-//                    CONTOUR_LIMIT_EXCEEDED, PITCH_LIMIT_EXCEEDED, E_Stop, BT_DISCONNECTED,BT_SYNC_Failed,BT_State,FRAME_TWISTED,FET_TEMP_EXCEEDED,LOW_BATTERY,VERTICAL_OUT_OF_SYNC,CONTOUR_OUT_OF_SYNC,VERTICAL_NOT_RESPONDING,CONTOUR_NOT_RESPONDING,PITCH_NOT_RESPONDING,STEERING_LIMIT_EXCEEDED,MOTOR_OVERLOADED,EEPROM_ERROR,MACRO_DESYNC);
-//}
-
-//HAL_UART_Transmit_DMA(&huart5, (uint8_t*)outputBuffer, len);
-//break;
-//	}
-
-//            case '3': {
-//                len = snprintf(Left_IMU_Data, sizeof(Left_IMU_Data), "%f\n", Left_Vertical_Data);
-//                HAL_UART_Transmit_IT(&huart5, (uint8_t*)Left_IMU_Data, len);
-//                break;
-//            }
+            case '3': {
+                len = snprintf(Left_IMU_Data, sizeof(Left_IMU_Data), "%f\n", L_Pitch);
+                HAL_UART_Transmit_IT(&huart4, (uint8_t*)Left_IMU_Data, len);
+                break;
+            }
+						
+						case '4': {
+                len = snprintf(Left_IMU_Data, sizeof(Left_IMU_Data), "%f\n", L_Roll);
+                HAL_UART_Transmit_IT(&huart4, (uint8_t*)Left_IMU_Data, len);
+                break;
+								 }
+						case '5':{
+							len = snprintf(Right_IMU_Data, sizeof(Right_IMU_Data), "%f\n", R_Pitch_Filtered);
+                HAL_UART_Transmit_IT(&huart4, (uint8_t*)Right_IMU_Data, len);
+                break;
+						 }
+						case '6':{
+							len = snprintf(Right_IMU_Data, sizeof(Right_IMU_Data), "%f\n", R_Roll_Filtered);
+                HAL_UART_Transmit_IT(&huart4, (uint8_t*)Right_IMU_Data, len);
+                break;
+						 }
+            case '7': {
+                len = snprintf(Pitch_IMU_Data, sizeof(Pitch_IMU_Data), "%f\n", Shear_Pitch);
+                HAL_UART_Transmit_IT(&huart4, (uint8_t*)Pitch_IMU_Data, len);
+                break;
+            } 
 //						
-//						case '4': {
-//                len = snprintf(Left_IMU_Data, sizeof(Left_IMU_Data), "%f\n",Left_Contour_Data);
-//                HAL_UART_Transmit_IT(&huart5, (uint8_t*)Left_IMU_Data, len);
-//                break;
-//								 }
-//						case '5':{
-//							len = snprintf(Right_IMU_Data, sizeof(Right_IMU_Data), "%f\n",Right_Vertical_Data);
-//                HAL_UART_Transmit_IT(&huart5, (uint8_t*)Right_IMU_Data, len);
-//                break;
-//						 }
-//						case '6':{
-//							len = snprintf(Right_IMU_Data, sizeof(Right_IMU_Data), "%f\n",Right_Contour_Data);
-//                HAL_UART_Transmit_IT(&huart5, (uint8_t*)Right_IMU_Data, len);
-//                break;
-//						 }
-//            case '7': {
-//                len = snprintf(Pitch_IMU_Data, sizeof(Pitch_IMU_Data), "%f\n",Pitch_Arm_Data);
-//                HAL_UART_Transmit_IT(&huart5, (uint8_t*)Pitch_IMU_Data, len);
-//                break;
-//            } 
-//						
-//						case '8' :{
-//						for (uint8_t i = 1; i < 15; i++)
-//		     {
-//			if (i != 9 && i != 10)
-//			{
-//				len += snprintf(outputBuffer + len, sizeof(outputBuffer) - len,  "(%s): %0.1f\n", Node_ID_To_Name[i], FET_Temperature[i]);
-////				len+=snprintf(outputBuffer+len,sizeof(outputBuffer)-len," FET_Temperature[%d]: %0.1f\n ",i,FET_Temperature[i]);
-//				
-//			}}	  
-//				 HAL_UART_Transmit_IT(&huart5, (uint8_t*)outputBuffer, len);
-//					break;		
-//						}
+						case '8' :{
+						for (uint8_t i = 1; i < 17; i++)
+		     {
+			if (i != 5)
+			{
+				len += snprintf(outputBuffer + len, sizeof(outputBuffer) - len,  "(%s): %0.1f\n", Node_ID_To_Name[i], FET_Temperature[i]);
+//				len+=snprintf(outputBuffer+len,sizeof(outputBuffer)-len," FET_Temperature[%d]: %0.1f\n ",i,FET_Temperature[i]);
+				
+			}}	  
+				 HAL_UART_Transmit_IT(&huart4, (uint8_t*)outputBuffer, len);
+					break;		
+						}
 
             default: {
                 break; 
