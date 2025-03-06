@@ -415,6 +415,7 @@ int err_count = 0;
 
 float Prev_Vel = 0, Current_Vel = 0;
 uint64_t Dummy_Tick = 0, Dummy_Tick_2 = 0;
+float Right_roll_value = 0, Right_pitch_value = 0, Right_Pitch = 0, Right_Roll = 0, Right_Roll_Final = 0, Right_Pitch_Final = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -481,6 +482,8 @@ void Left_Frame_Controls (void);
  void All_Macro_Sensing(void);
  void New_Steering_Controls_(void);
  void Pitch_Control(void);
+ float convertRawDataToFloat(uint8_t* data);
+ float Float16_To_Decimal(uint16_t float16);
  //void Set_Motor_Position (uint8_t Axis, float Position);
 /* USER CODE END PFP */
 
@@ -638,7 +641,20 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan1)
 		
 		case (RR_STEER): 	Steer_Angle[4] = CAN_SPI_READ(RxData);	 			RR_Steering = New_Sensor_Pos ( Steer_Angle[4] , RR_HomePos ) ;						Sensor_Id[6]++;Node_Id[26]++; break;
 		
-
+		case (0x03):     Node_Id[28]++;
+//										Right_roll_value = convertRawDataToFloat(RxData);
+//										Right_pitch_value = convertRawDataToFloat(&RxData2[4]);
+										Right_roll_value = RxData[0] << 8 | RxData[1];
+										Right_pitch_value = RxData[2] << 8 | RxData[3];
+										Right_roll_value = (uint16_t)Right_roll_value;
+										Right_pitch_value = (uint16_t)Right_pitch_value;
+										Right_Roll = Float16_To_Decimal(Right_roll_value);
+										Right_Pitch = Float16_To_Decimal(Right_pitch_value);
+										
+										 Right_Roll=-(Right_Roll-180);
+										Right_Roll_Final= (Right_Roll >180) ? (Right_Roll -360) : (Right_Roll<-180)? (Right_Roll+360):Right_Roll;
+										Right_Pitch_Final = Right_Pitch;
+												break;
 //		case (LF_STEER): 	Steer_Angle[1] = CAN_SPI_READ(RxData);  		if ((Steer_Angle[1] <= 100 && Steer_Angle[1] >= 0 )|| (Steer_Angle[1] >= 640 && Steer_Angle[1] <= 720)){	LF_Steering = New_Sensor_Pos ( Steer_Angle[1] , LF_HomePos ) ; Node_Id[23]++;}	else {Steering_Boundary_Flag = SET;} break;
 //		case (LR_STEER): 	Steer_Angle[2] = CAN_SPI_READ(RxData);			if ((Steer_Angle[2] <= 58 && Steer_Angle[2] >= 0) || (Steer_Angle[2] >= 598 && Steer_Angle[2] <= 720)){	LR_Steering = New_Sensor_Pos ( Steer_Angle[2] , LR_HomePos ) ;	Node_Id[24]++;} else {Steering_Boundary_Flag = SET;}break; 
 //		case (RF_STEER): 	Steer_Angle[3] = CAN_SPI_READ(RxData);			if (Steer_Angle[3] >= 368 && Steer_Angle[3] <= 548)	{RF_Steering = New_Sensor_Pos ( Steer_Angle[3] , RF_HomePos ) ;	Node_Id[25]++;}	else {Steering_Boundary_Flag = SET;}break;
@@ -899,10 +915,10 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 		Drive_Wheel_Controls_Vel_Based();
 ////Left_Frame_Controls();
 		New_Steering_Controls();
-		All_Macro_Sensing();
-  	Frame_Controls();
-		Dynamic_Width_Adjustment();
-		Shearing_Motors();
+		//All_Macro_Sensing();
+  	//Frame_Controls();
+		//Dynamic_Width_Adjustment();
+		//Shearing_Motors();
 		//Pitch_Control();
 		}
 	else{Emergency_Stop();}
@@ -3037,7 +3053,96 @@ void Frame_Controls(void)
 }
 }	
 
+void Frame_Controls_Sensor_BLE(void)
+{	
+/*-----------------------------PID CONTROL-------------------------------------*/
+  if (!Left_IMU_State )
+	{
+	L_Vert_Speed = R_Vert_Speed = Contour_Speed = 0;
+	//BUZZER_ON;
+	}
+	else if ( Left_IMU_State ) 
 
+
+	{	// ADD ZERO ERROR CLR FLAG AND HEARTBEAT OK FLAG	
+	/*	L_R_Err =  Left_Roll_Pos - L_Roll ;                                               										// L roll error = Target value(0.68) - current value. 
+		
+		L_Vert_Speed = Left_Verticality_PID ( L_R_Err , NULL );         																			// L Vertical speed from left verticality pid function. 
+
+		L_Vert_Speed = (( L_Vert_Speed <= 3 ) && ( L_Vert_Speed >= -3 ) ) ? 0 : L_Vert_Speed;                 // Assigning 0 to L Vertical Speed if it is between - 2 to 2 (to avoid oscillations)
+
+		Left_Error_Flag =( L_Vert_Speed == 0 ) ? NULL : SET;																									// (CHECK) for basic testing. to set once the vertical speed is zero(correction completed) ISSUE
+	
+*/
+		//R_R_Err =  Right_Pitch_Pos - R_Pitch 	;	
+	
+		R_R_Err =  Right_Pitch_Pos - R_Pitch_Filtered 	;																																	// R roll error = Target value(-3.0625) - current value.
+	
+		R_Vert_Speed = Right_Verticality_PID ( R_R_Err , NULL );																							// R Vertical speed from right verticality pid function. 
+	
+	  R_Vert_Speed = (( R_Vert_Speed <= 2 ) && ( R_Vert_Speed >= -2 ) ) ? 0 : R_Vert_Speed;									// Assigning 0 to R Vertical Speed if it is between - 2 to 2 (to avoid oscillations)
+
+		Right_Error_Flag =( R_Vert_Speed == 0 ) ? NULL : SET;																									// (CHECK) for basic testing. to set once the vertical speed is zero(correction completed) ISSUE
+
+
+		//Contour_Avg =	R_Pitch ;																																						
+		
+		//C_Err =   Right_Roll_Pos - R_Roll ;	
+		
+		C_Err =   Right_Roll_Pos - R_Roll_Filtered ;	
+		
+		// (CHECK) Contour error = Target value(2.5) - current value.
+	
+	//	if ( C_Err > 1 || C_Err < -1)  // Error Boundary
+	//	{
+		Contour_Speed = Contour_PID( C_Err , NULL );																													// Contour speed from contour pid function.
+		
+		Contour_Speed = (( Contour_Speed <= 2 ) && ( Contour_Speed >= -2) ) ? 0 : Contour_Speed;							// Assigning 0 to Contour Speed if it is between - 1 to 1 (to avoid oscillations)
+
+		Contour_Error_Flag = ( Contour_Speed == 0 ) ? NULL : SET;																							// (CHECK) for basic testing. to set once the vertical speed is zero(correction completed) ISSUE
+	//	}
+	//	else Contour_Speed = 0;
+	
+			
+		FRAME_NO_ERROR_FLAG = ( !Left_Error_Flag && !Right_Error_Flag && !Contour_Error_Flag ) ? NULL : SET;		// (CHECK) for basic testing. 
+
+/*-----------------------------PID CONTROL-------------------------------------*/
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/*-----------------------------CHECK FOR LIMITS AND SET VELOCITIES TO MOTOR-------------------------------------*/
+		
+//		if ( L_Vert_Speed > 0 && Left_Vertical < -FRAME_LIMIT) L_Vert_Speed = 0;
+//		if ( L_Vert_Speed < 0 && Left_Vertical > 	FRAME_LIMIT) L_Vert_Speed = 0;
+		
+		if( L_Vert_Speed_Temp != L_Vert_Speed ) 																															// checking if the new value is not equal to old value
+		{
+			//Set_Motor_Velocity (LVert , L_Vert_Speed );
+			L_Vert_Speed_Temp = L_Vert_Speed ;																																// Overwriting old value with new value. 
+		}		
+			
+		//R_Vert_Speed = R_Vert_Speed > 0 && Right_Vertical_Motor_Count >= 550 ? 0 : R_Vert_Speed < 0 && Right_Vertical_Motor_Count <= -550 ? 0 : R_Vert_Speed ;
+	  // 	Right_Vertical_On_Limit = Right_Vertical_Motor_Count >= 550 ||  Right_Vertical_Motor_Count <= -550 ? SET : NULL;
+		if( R_Vert_Speed_Temp != R_Vert_Speed ) 																															// checking if the new value is not equal to old value
+		{
+			Input_Velocity[6] = R_Vert_Speed;
+			Set_Motor_Velocity (RVert , -R_Vert_Speed );	  //-
+			R_Vert_Speed_Temp = R_Vert_Speed ;																																// Overwriting old value with new value.
+		} 
+	//	Contour_Speed = Contour_Speed > 0 && Contour_Motor_Count >= 550 ? 0 : Contour_Speed < 0 && Contour_Motor_Count <= -550 ? 0 : Contour_Speed ;
+	//	Contour_On_Limit = Contour_Motor_Count >= 550 ||  Contour_Motor_Count <= -550 ? SET : NULL;		
+		if( Contour_Speed_Temp != Contour_Speed ) 																														// checking if the new value is not equal to old value
+		{
+			Input_Velocity[7] = Contour_Speed;
+			Set_Motor_Velocity (Contour , Contour_Speed );
+			Contour_Speed_Temp = Contour_Speed ;																															// Overwriting old value with new value.
+		}		
+		
+		Frame_Buzz_Switch = ( Right_Vertical_On_Limit == 1 ) || (Contour_On_Limit == 1) ?  1 : 0;
+
+			/*-----------------------------CHECK FOR LIMITS AND SET VELOCITIES TO MOTOR-------------------------------------*/				
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////						
+}
+
+}
 float Right_Verticality_PID ( float Right_Roll_Value , unsigned long long 	R_Time_Stamp )
 {
 		//dt = Time_Stamp - time;
@@ -5248,7 +5353,23 @@ void Pitch_Control(void)
 	
 }
 
+float convertRawDataToFloat(uint8_t* data) {
+    int32_t raw = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
+    return *((float*)&raw);
+}
 
+float Float16_To_Decimal(uint16_t float16)
+{
+	 uint16_t sign = (float16 >> 15) & 0x1;
+   uint16_t exponent = (float16 >> 10) & 0x1F;
+   uint16_t mantissa = float16 & 0x3FF;
+	
+//	int exp = (int)exponent - 15;
+	float frac = (float)mantissa / 1024.0f;
+	double decimal_value = pow(-1, sign) * (1 + mantissa/ 1024.0) * pow(2, exponent - 15);
+	
+	return decimal_value;
+}
 /* USER CODE END 4 */
 
 /**
