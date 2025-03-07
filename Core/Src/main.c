@@ -179,12 +179,14 @@ uint8_t LFD=1,LRD=2,RFD=3,RRD=4,LVert=5, RVert=6, Contour=7, LFS=8, LRS=9, RFS=1
 
 float L_Roll=0, L_Pitch=0, R_Roll=0, R_Pitch=0;
 float Left_Roll_Pos = 1.5 - 2, Right_Roll_Pos = 1.25, Right_Pitch_Pos = 3.75, Left_Pitch_Pos=17.4, Left_Column_Error =0 , Left_Col_Pos = 0;
+float Right_Roll_Home_Pos = -1, Right_Pitch_Home_Pos = -0.2;
 //float Left_Roll_Pos = 1.5 - 2, Right_Roll_Pos = 1.9, Right_Pitch_Pos = 4.93, Left_Pitch_Pos=17.4, Left_Column_Error =0 , Left_Col_Pos = 0;
 bool Left_IMU_State=1, Initiate_Process=0;
 float Shear_Roll = 0, Shear_Pitch = 0;
 /* 							IMU_VARIABLES 						*/
 /* 							STEERING_VARIABLES 						*/
-uint16_t Track_Width = 1800, Min_Track_Width = 1800, Zero_Turn_Angle = 27, Wheel_Base = 900; //Track_Width = 1730, Min_Track_Width = 1730
+//uint16_t Track_Width = 1800, Min_Track_Width = 1800, Wheel_Base = 900; //Track_Width = 1730, Min_Track_Width = 1730
+float Zero_Turn_Angle = 27, Track_Width = 1800, Min_Track_Width = 1800, Wheel_Base = 900;;
 uint16_t Steer_Angle[5];
 float LF_Steering=0, LR_Steering=0, RF_Steering=0, RR_Steering=0;	
 float LF_HomePos =9, LR_HomePos= 698 , RF_HomePos= 452 , RR_HomePos = 503+2;	// -->	HOME POSITIONS LF_HomePos = 190, LR_HomePos= 87 , RF_HomePos= 220 , RR_HomePos = 623;
@@ -221,7 +223,7 @@ uint8_t Tx_Voltage = 0;
 
 /* 							DRIVE_WHEELS_VARIABLES 						*/
 bool DRIVES_ERROR_FLAG = NULL;
-float L_R_Err=0, R_R_Err=0, C_Err=0, Contour_Avg=0, Drive_Torque=1, Wheel_Torque = 10;
+float L_R_Err=0, R_R_Err=0, C_Err=0, Contour_Avg=0, Drive_Torque=1, Wheel_Torque = 10, Prev_R_R_Err = 0, Prev_C_Err = 0;
 float Vel_Limit = 0, Vel_Limit_Temp=1, Torque=0, Torque_Temp=0 , Prev_Torque=0, Prev_Vel_Limit=30, Input_Vel = 0;
 int Left_Wheels_Torque =0, Left_Wheels_Torque_Temp=0;
 bool MODE_CHANGE_FLAG = SET;
@@ -315,6 +317,7 @@ uint8_t Tx_Uart[2];
 double R_Pitch_Filtered = 0, Prev_R_Pitch_Filtered = 0, R_Roll_Filtered = 0, Prev_R_Roll_Filtered = 0;
 double FL_LPF_Angle = 0, FR_LPF_Angle = 0, RL_LPF_Angle = 0, RR_LPF_Angle = 0, Prev_FL_LPF_Angle = 0, Prev_FR_LPF_Angle = 0, Prev_RL_LPF_Angle = 0, Prev_RR_LPF_Angle = 0;
 
+double BLE_Roll = 0, BLE_Pitch = 0, Prev_BLE_Roll = 0, Prev_BLE_Pitch = 0;
 
 /*                                               FILTER VARIABLES                                                       */
 
@@ -372,7 +375,8 @@ float Turning_Radius = 0;
 float Angle = 0;
 float LF_Pos = 0, LR_Pos = 0, RF_Pos = 0, RR_Pos = 0, LF_Pos_Temp = 0, LR_Pos_Temp = 0, RF_Pos_Temp = 0, RR_Pos_Temp = 0; 
 float Input_Velocity[20];
-uint16_t Half_Track_Width = 0, Half_Wheel_Base = 0;
+//uint16_t Half_Track_Width = 0, Half_Wheel_Base = 0;
+float Half_Track_Width = 0, Half_Wheel_Base = 0;
 
 /////////////////////////////////////////////////////OPERATION MONITOR VARIABLES	////////////////////////////////////////
 uint64_t Heartbeat_Tick = 0, Drive_Error_Tick = 0, Fet_Temp_Tick =0, Overload_Tick = 0, Motor_Tick = 0, speed_time = 0, Joystick_Tick = 0, Vertical_Limit_Tick = 0, Contour_Limit_Tick = 0, Pitch_Limit_Tick = 0, Vertical_Tick = 0, Vert_Resp_Tick = 0, Contour_Tick = 0, Cont_Resp_Tick = 0, Pitch_Tick = 0, Pitch_Resp_Tick = 0;
@@ -484,6 +488,8 @@ void Left_Frame_Controls (void);
  void Pitch_Control(void);
  float convertRawDataToFloat(uint8_t* data);
  float Float16_To_Decimal(uint16_t float16);
+ void Frame_Controls_Sensor_BLE(void);
+ void Dynamic_Width_Corrections(void);
  //void Set_Motor_Position (uint8_t Axis, float Position);
 /* USER CODE END PFP */
 
@@ -548,6 +554,14 @@ double RFS_LPF(double input, double prev_output, double alpha)
 	return alpha * input + (1.0 - alpha) * prev_output;
 }
 double RRS_LPF(double input, double prev_output, double alpha)
+{
+	return alpha * input + (1.0 - alpha) * prev_output;
+}
+double BLE_Vertical_LPF(double input, double prev_output, double alpha)
+{
+	return alpha * input + (1.0 - alpha) * prev_output;
+}
+double BLE_Contour_LPF(double input, double prev_output, double alpha)
 {
 	return alpha * input + (1.0 - alpha) * prev_output;
 }
@@ -654,6 +668,8 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan1)
 										 Right_Roll=-(Right_Roll-180);
 										Right_Roll_Final= (Right_Roll >180) ? (Right_Roll -360) : (Right_Roll<-180)? (Right_Roll+360):Right_Roll;
 										Right_Pitch_Final = Right_Pitch;
+										
+										
 												break;
 //		case (LF_STEER): 	Steer_Angle[1] = CAN_SPI_READ(RxData);  		if ((Steer_Angle[1] <= 100 && Steer_Angle[1] >= 0 )|| (Steer_Angle[1] >= 640 && Steer_Angle[1] <= 720)){	LF_Steering = New_Sensor_Pos ( Steer_Angle[1] , LF_HomePos ) ; Node_Id[23]++;}	else {Steering_Boundary_Flag = SET;} break;
 //		case (LR_STEER): 	Steer_Angle[2] = CAN_SPI_READ(RxData);			if ((Steer_Angle[2] <= 58 && Steer_Angle[2] >= 0) || (Steer_Angle[2] >= 598 && Steer_Angle[2] <= 720)){	LR_Steering = New_Sensor_Pos ( Steer_Angle[2] , LR_HomePos ) ;	Node_Id[24]++;} else {Steering_Boundary_Flag = SET;}break; 
@@ -681,6 +697,12 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan1)
 	
 	RRS_Filtered = RRS_LPF(RR_Steering, Prev_RRS_Filtered, ALPHA);
 	Prev_RRS_Filtered = RRS_Filtered;
+	
+	BLE_Roll = BLE_Vertical_LPF(Right_Roll_Final, Prev_BLE_Roll, ALPHA);
+	Prev_BLE_Roll = BLE_Roll;
+	
+	BLE_Pitch = BLE_Contour_LPF(Right_Pitch_Final, Prev_BLE_Pitch, ALPHA);
+	Prev_BLE_Pitch = BLE_Pitch;
 }
 
 void Set_Motor_Position ( uint8_t Axis , float Position )
@@ -915,11 +937,12 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 		Drive_Wheel_Controls_Vel_Based();
 ////Left_Frame_Controls();
 		New_Steering_Controls();
-		//All_Macro_Sensing();
-  	//Frame_Controls();
-		//Dynamic_Width_Adjustment();
-		//Shearing_Motors();
-		//Pitch_Control();
+		//Frame_Controls_Sensor_BLE();
+		All_Macro_Sensing();
+  	Frame_Controls();
+		Dynamic_Width_Adjustment();
+		Shearing_Motors();
+		Pitch_Control();
 		}
 	else{Emergency_Stop();}
 
@@ -3075,12 +3098,17 @@ void Frame_Controls_Sensor_BLE(void)
 	
 */
 		//R_R_Err =  Right_Pitch_Pos - R_Pitch 	;	
+		
 	
-		R_R_Err =  Right_Pitch_Pos - R_Pitch_Filtered 	;																																	// R roll error = Target value(-3.0625) - current value.
+		R_R_Err =  Right_Pitch_Home_Pos - BLE_Pitch 	;																																	// R roll error = Target value(-3.0625) - current value.
+		
+		R_R_Err = R_R_Err > 20 || R_R_Err < -20 ? Prev_R_R_Err : R_R_Err;
+		
+		R_R_Err = R_R_Err < 0.2 && R_R_Err > -0.2 ? 0 : R_R_Err;
 	
 		R_Vert_Speed = Right_Verticality_PID ( R_R_Err , NULL );																							// R Vertical speed from right verticality pid function. 
 	
-	  R_Vert_Speed = (( R_Vert_Speed <= 2 ) && ( R_Vert_Speed >= -2 ) ) ? 0 : R_Vert_Speed;									// Assigning 0 to R Vertical Speed if it is between - 2 to 2 (to avoid oscillations)
+	  //R_Vert_Speed = (( R_Vert_Speed <= 2 ) && ( R_Vert_Speed >= -2 ) ) ? 0 : R_Vert_Speed;									// Assigning 0 to R Vertical Speed if it is between - 2 to 2 (to avoid oscillations)
 
 		Right_Error_Flag =( R_Vert_Speed == 0 ) ? NULL : SET;																									// (CHECK) for basic testing. to set once the vertical speed is zero(correction completed) ISSUE
 
@@ -3089,7 +3117,11 @@ void Frame_Controls_Sensor_BLE(void)
 		
 		//C_Err =   Right_Roll_Pos - R_Roll ;	
 		
-		C_Err =   Right_Roll_Pos - R_Roll_Filtered ;	
+		C_Err =   Right_Roll_Home_Pos - BLE_Roll ;	
+		
+		C_Err = C_Err > 20 || C_Err < -20 ? Prev_C_Err : C_Err;
+		
+		C_Err = C_Err < 0.2 && C_Err > -0.2 ? 0 : C_Err;
 		
 		// (CHECK) Contour error = Target value(2.5) - current value.
 	
@@ -3097,12 +3129,13 @@ void Frame_Controls_Sensor_BLE(void)
 	//	{
 		Contour_Speed = Contour_PID( C_Err , NULL );																													// Contour speed from contour pid function.
 		
-		Contour_Speed = (( Contour_Speed <= 2 ) && ( Contour_Speed >= -2) ) ? 0 : Contour_Speed;							// Assigning 0 to Contour Speed if it is between - 1 to 1 (to avoid oscillations)
+		//Contour_Speed = (( Contour_Speed <= 2 ) && ( Contour_Speed >= -2) ) ? 0 : Contour_Speed;							// Assigning 0 to Contour Speed if it is between - 1 to 1 (to avoid oscillations)
 
 		Contour_Error_Flag = ( Contour_Speed == 0 ) ? NULL : SET;																							// (CHECK) for basic testing. to set once the vertical speed is zero(correction completed) ISSUE
 	//	}
 	//	else Contour_Speed = 0;
-	
+		Prev_R_R_Err = R_R_Err;
+		Prev_C_Err = C_Err;
 			
 		FRAME_NO_ERROR_FLAG = ( !Left_Error_Flag && !Right_Error_Flag && !Contour_Error_Flag ) ? NULL : SET;		// (CHECK) for basic testing. 
 
@@ -3124,7 +3157,7 @@ void Frame_Controls_Sensor_BLE(void)
 		if( R_Vert_Speed_Temp != R_Vert_Speed ) 																															// checking if the new value is not equal to old value
 		{
 			Input_Velocity[6] = R_Vert_Speed;
-			Set_Motor_Velocity (RVert , -R_Vert_Speed );	  //-
+			Set_Motor_Velocity (RVert , R_Vert_Speed );	  //-
 			R_Vert_Speed_Temp = R_Vert_Speed ;																																// Overwriting old value with new value.
 		} 
 	//	Contour_Speed = Contour_Speed > 0 && Contour_Motor_Count >= 550 ? 0 : Contour_Speed < 0 && Contour_Motor_Count <= -550 ? 0 : Contour_Speed ;
@@ -3132,7 +3165,7 @@ void Frame_Controls_Sensor_BLE(void)
 		if( Contour_Speed_Temp != Contour_Speed ) 																														// checking if the new value is not equal to old value
 		{
 			Input_Velocity[7] = Contour_Speed;
-			Set_Motor_Velocity (Contour , Contour_Speed );
+			Set_Motor_Velocity (Contour , -Contour_Speed );
 			Contour_Speed_Temp = Contour_Speed ;																															// Overwriting old value with new value.
 		}		
 		
@@ -3669,13 +3702,14 @@ void Dynamic_Width_Adjustment (void)
 		else if ( Steering_Mode < 4 )
 		{
 			Width_Motor_Speed = 0;
-			//Dynamic_Width_Corrections();
+	
 		}
 
 	}
 	else 
 	{
 		Width_Motor_Speed = 0 ;
+		Dynamic_Width_Corrections();
 	}
 	
 	if( Steering_Mode < 4 ) Width_Motor_Speed = 0;
@@ -3724,8 +3758,9 @@ void Dynamic_Width_Adjustment (void)
 void Dynamic_Width_Corrections(void)
 {
 	
-	Half_Track_Width = (Track_Width + (Lower_Width_Motor_Count * 0.25f)) / 2;
+	Half_Track_Width = (1800 + (Lower_Width_Motor_Count * 0.25f)) / 2;  //Track_Width
 	Half_Wheel_Base = Wheel_Base / 2;
+	Track_Width = 1800 + (Lower_Width_Motor_Count * 0.25f);    //TRack_Width
 	Zero_Turn_Angle = atan(Half_Wheel_Base / Half_Track_Width);
 	Zero_Turn_Angle = Zero_Turn_Angle * (180 / 3.14);
 }
@@ -5046,12 +5081,14 @@ void UART_tx(void) {
                 break;
 								 }
 						case '5':{
-							len = snprintf(Right_IMU_Data, sizeof(Right_IMU_Data), "%f\n", R_Pitch_Filtered);
+							//len = snprintf(Right_IMU_Data, sizeof(Right_IMU_Data), "%f\n", R_Pitch_Filtered);
+							len = snprintf(Right_IMU_Data, sizeof(Right_IMU_Data), "%f\n", BLE_Pitch);
                 HAL_UART_Transmit_IT(&huart4, (uint8_t*)Right_IMU_Data, len);
                 break;
 						 }
 						case '6':{
-							len = snprintf(Right_IMU_Data, sizeof(Right_IMU_Data), "%f\n", R_Roll_Filtered);
+							//len = snprintf(Right_IMU_Data, sizeof(Right_IMU_Data), "%f\n", R_Roll_Filtered);
+							len = snprintf(Right_IMU_Data, sizeof(Right_IMU_Data), "%f\n", BLE_Roll);
                 HAL_UART_Transmit_IT(&huart4, (uint8_t*)Right_IMU_Data, len);
                 break;
 						 }
