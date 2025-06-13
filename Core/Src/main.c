@@ -416,6 +416,7 @@ char outputBuffer[1024],Main_Battery[42],Left_IMU_Data[50],Right_IMU_Data[50],Pi
 char Node_ID_To_Name[][10]={"","LFW","LRW","RFW","RRW","","Vert","Contour","LFS","LRS","RFS","RRS","L_Macro","R_Macro","Pitch_Arm","L_Width","U_Width"};
 float LF = 0, LR = 0;
 int err_count = 0;
+float Var = 0, Var_Temp = 0;
 
 float Prev_Vel = 0, Current_Vel = 0;
 uint64_t Dummy_Tick = 0, Dummy_Tick_2 = 0;
@@ -490,6 +491,7 @@ void Left_Frame_Controls (void);
  float Float16_To_Decimal(uint16_t float16);
  void Frame_Controls_Sensor_BLE(void);
  void Dynamic_Width_Corrections(void);
+ void Macro(void);
  //void Set_Motor_Position (uint8_t Axis, float Position);
 /* USER CODE END PFP */
 
@@ -927,22 +929,23 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 	
 		test++;
 		BT_State = BT_READ;
-		Initial_Msg();
+		//Initial_Msg();
 		Joystick_Reception();
 		EEPROM_Store_Data();
 		Operations_Monitor();
 		
 		if(OPERATION_MONITOR_FLAG==NULL)
 		{
-		Drive_Wheel_Controls_Vel_Based();
+			Drive_Wheel_Controls_Vel_Based();
 ////Left_Frame_Controls();
-		New_Steering_Controls();
+			New_Steering_Controls();
 		//Frame_Controls_Sensor_BLE();
-		All_Macro_Sensing();
-  	Frame_Controls();
-		Dynamic_Width_Adjustment();
-		Shearing_Motors();
-		Pitch_Control();
+		//All_Macro_Sensing();
+  	//Frame_Controls();
+		//Dynamic_Width_Adjustment();
+			Shearing_Motors();
+			Macro();
+		//Pitch_Control();
 		}
 	else{Emergency_Stop();}
 
@@ -2865,7 +2868,7 @@ void Operations_Monitor(void)
 		Pitch_Tick = HAL_GetTick();
 	}
 		
-	OPERATION_MONITOR_FLAG = Drive_Disconnected == SET || Sensor_Disconnected == SET || Drive_Errored == SET || Joystick_Disconnected || FET_Temp_Exceeded == SET ? SET : NULL;// && FET_Temp_Exceeded == SET && Motor_Overloaded == SET && E_Stop == SET && Joystick_Disconnected == SET && Vertical_Limit_Exceeded == SET && Contour_Limit_Exceeded == SET && Pitch_Limit_Exceeded == SET && Vertical_Not_Responding == SET && Contour_Not_Responding == SET ? SET : NULL;
+	OPERATION_MONITOR_FLAG = Drive_Disconnected == SET || Sensor_Disconnected == SET || Drive_Errored == SET || FET_Temp_Exceeded == SET ? SET : NULL;// && FET_Temp_Exceeded == SET && Motor_Overloaded == SET && E_Stop == SET && Joystick_Disconnected == SET && Vertical_Limit_Exceeded == SET && Contour_Limit_Exceeded == SET && Pitch_Limit_Exceeded == SET && Vertical_Not_Responding == SET && Contour_Not_Responding == SET ? SET : NULL;
 }
 
 void Emergency_Stop(void)
@@ -2979,7 +2982,7 @@ void Emergency_Stop(void)
 		}
 	//}
 	
-	OPERATION_MONITOR_FLAG =  Drive_Disconnected == NULL && Sensor_Disconnected == NULL && Drive_Errored == NULL && !Joystick_Disconnected && FET_Temp_Exceeded == NULL ? NULL : SET;// && FET_Temp_Exceeded == NULL && Motor_Overloaded == NULL && E_Stop == NULL && Joystick_Disconnected == NULL && Vertical_Limit_Exceeded == NULL && Contour_Limit_Exceeded == NULL && Pitch_Limit_Exceeded == NULL && Vertical_Not_Responding == NULL && Contour_Not_Responding == NULL && Pitch_Not_Responding == NULL ? NULL : SET;
+	OPERATION_MONITOR_FLAG =  Drive_Disconnected == NULL && Sensor_Disconnected == NULL && Drive_Errored == NULL && FET_Temp_Exceeded == NULL ? NULL : SET;// && FET_Temp_Exceeded == NULL && Motor_Overloaded == NULL && E_Stop == NULL && Joystick_Disconnected == NULL && Vertical_Limit_Exceeded == NULL && Contour_Limit_Exceeded == NULL && Pitch_Limit_Exceeded == NULL && Vertical_Not_Responding == NULL && Contour_Not_Responding == NULL && Pitch_Not_Responding == NULL ? NULL : SET;
 	if (OPERATION_MONITOR_FLAG == NULL) {BUZZER_OFF;}
 	
 	
@@ -4713,7 +4716,7 @@ void New_Steering_Controls (void)
 			case CRAB :							//	--> CRAB STEERING			
 			/*///////////////////////////////////////////////////////////////////////////////////	CRAB STEERING  - STEERING FUNCTION ///////////////////////////////////////////////////////////////////////////////////	*/
 			
-							AW_Angle = ( Pot_Angle - 90) ; 
+							AW_Angle = ( Pot_Angle - 90) * 0.9; 
 			
 							LF_Speed = (LF_Steering > AW_Angle -STEERING_BOUNDARY && LF_Steering < AW_Angle +STEERING_BOUNDARY ) ? 0 : ( LF_Steering < AW_Angle ) ? STEERING_HOMING_SPEED: ( LF_Steering > AW_Angle ) ? -STEERING_HOMING_SPEED : 0;		
 							LR_Speed = (LR_Steering > AW_Angle -STEERING_BOUNDARY && LR_Steering < AW_Angle +STEERING_BOUNDARY ) ? 0 : ( LR_Steering < AW_Angle ) ? STEERING_HOMING_SPEED: ( LR_Steering > AW_Angle ) ? -STEERING_HOMING_SPEED : 0;					
@@ -5277,36 +5280,36 @@ Left_Macro_Speed = Right_Macro_Speed = Macro_Speed;
 //				Left_Macro_Speed = Left_Macro_Speed > 0 && Left_Macro_Motor_Count >= -30 ? 5 : Left_Macro_Speed < 0 && Left_Macro_Motor_Count <= -170 ? -5 : Left_Macro_Speed;
 //				Right_Macro_Speed = Right_Macro_Speed > 0 && Right_Macro_Motor_Count  >= -30 ? 5 : Right_Macro_Speed < 0 && Right_Macro_Motor_Count <= 170 ? -5 : Right_Macro_Speed;
 //				
-				Left_Macro_Speed = Left_Macro_Speed > 0 && Left_Macro_Motor_Count >= 0 ? 0 : Left_Macro_Speed < 0 && Left_Macro_Motor_Count <= -300 ? 0 : Left_Macro_Speed;
-				Right_Macro_Speed = Right_Macro_Speed > 0 && Right_Macro_Motor_Count  >= 0 ? 0 : Right_Macro_Speed < 0 && Right_Macro_Motor_Count <= -300 ? 0 : Right_Macro_Speed;
+				//Left_Macro_Speed = Left_Macro_Speed > 0 && Left_Macro_Motor_Count >= 0 ? 0 : Left_Macro_Speed < 0 && Left_Macro_Motor_Count <= -300 ? 0 : Left_Macro_Speed;
+				//Right_Macro_Speed = Right_Macro_Speed > 0 && Right_Macro_Motor_Count  >= 0 ? 0 : Right_Macro_Speed < 0 && Right_Macro_Motor_Count <= -300 ? 0 : Right_Macro_Speed;
 	
-	  if (fabs(fabs(Right_Macro_Motor_Count) - fabs(Left_Macro_Motor_Count)) > max_difference)
-		{
-				if (fabs(fabs(Right_Macro_Motor_Count) - fabs(Left_Macro_Motor_Count)) > 10)
-				{
-					if(Mode==2)
-					{
-					 Left_Macro_Speed = Joystick != 0 ? 0 : Left_Macro_Speed;
-					 Right_Macro_Speed = Joystick != 0 ? 0 : Right_Macro_Speed;
-					}
-					
-//							else if(Mode==3){
-//                Left_Macro_Speed = Macro_Speed != 0 ? 0 : Left_Macro_Speed;
-//                Right_Macro_Speed = Macro_Speed != 0 ? 0 : Right_Macro_Speed;}
-					
-						else {}
-							
-				}
-				Macro_Error = Right_Macro_Motor_Count - Left_Macro_Motor_Count; 
-				//Macro_Error = -Macro_Error;
-				Correction_Speed = Macro_Error < 2 && Macro_Error > -2 ? 0 : (Macro_Error * Macro_Kp);
-//           Correction_Speed = Correction_Speed < 2 && Correction_Speed > -2 ? 0 : Correction_Speed;
-				Correction_Speed = Correction_Speed > 10 ? 10 : Correction_Speed < -10 ? -10 : Correction_Speed;
-		}
-		else 
-		{
+//	  if (fabs(fabs(Right_Macro_Motor_Count) - fabs(Left_Macro_Motor_Count)) > max_difference)
+//		{
+//				if (fabs(fabs(Right_Macro_Motor_Count) - fabs(Left_Macro_Motor_Count)) > 10)
+//				{
+//					if(Mode==2)
+//					{
+//					 Left_Macro_Speed = Joystick != 0 ? 0 : Left_Macro_Speed;
+//					 Right_Macro_Speed = Joystick != 0 ? 0 : Right_Macro_Speed;
+//					}
+//					
+////							else if(Mode==3){
+////                Left_Macro_Speed = Macro_Speed != 0 ? 0 : Left_Macro_Speed;
+////                Right_Macro_Speed = Macro_Speed != 0 ? 0 : Right_Macro_Speed;}
+//					
+//						else {}
+//							
+//				}
+//				Macro_Error = Right_Macro_Motor_Count - Left_Macro_Motor_Count; 
+//				//Macro_Error = -Macro_Error;
+//				Correction_Speed = Macro_Error < 2 && Macro_Error > -2 ? 0 : (Macro_Error * Macro_Kp);
+////           Correction_Speed = Correction_Speed < 2 && Correction_Speed > -2 ? 0 : Correction_Speed;
+//				Correction_Speed = Correction_Speed > 10 ? 10 : Correction_Speed < -10 ? -10 : Correction_Speed;
+//		}
+//		else 
+//		{
 				Correction_Speed = 0;
-		}
+//		}
         Left_Macro_Speed = Left_Macro_Speed + Correction_Speed;
 //	
 	if (Left_Macro_Speed_Temp != Left_Macro_Speed)
@@ -5406,6 +5409,46 @@ float Float16_To_Decimal(uint16_t float16)
 	double decimal_value = pow(-1, sign) * (1 + mantissa/ 1024.0) * pow(2, exponent - 15);
 	
 	return decimal_value;
+}
+
+void Macro()
+{
+	if (Mode == 2)
+	{
+		if (Joystick != Joystick_Temp)
+		{
+			switch (Joystick)
+			{
+				case 0: Macro_Speed = 0; break;
+				case 1: Macro_Speed = 10; break;
+				case 2: Macro_Speed = -10; break;
+				default: break;
+			}
+			
+			Joystick_Temp = Joystick;
+		}
+	}
+	
+	else
+	{
+		Macro_Speed = 0;	
+	}
+	
+	Left_Macro_Speed = Right_Macro_Speed = Macro_Speed;
+	
+	if (Left_Macro_Speed != Left_Macro_Speed_Temp)
+	{
+		Set_Motor_Velocity(12, Left_Macro_Speed);
+		
+		Left_Macro_Speed_Temp = Left_Macro_Speed;
+	}
+	
+	if (Right_Macro_Speed != Right_Macro_Speed_Temp)
+	{
+		Set_Motor_Velocity(13, Right_Macro_Speed);
+		
+		Right_Macro_Speed_Temp = Right_Macro_Speed;
+	}
 }
 /* USER CODE END 4 */
 
