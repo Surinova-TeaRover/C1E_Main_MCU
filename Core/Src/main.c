@@ -297,6 +297,8 @@ bool FLAG = SET;
 uint8_t Prev_Joystick = 0;
 int count = 0;
 float Rover_Velocity = 0.0;
+			float Cont=0, Cont_temp=0;
+
 
 bool JOYSTICK_STATE_FLAG = NULL, AXIS_STATE_FLAG = SET, HEARTBEAT_FLAG = SET, FET_TEMP_FLAG = SET, OPERATION_MONITOR_FLAG = NULL, MOTORS_STOP_FLAG = SET;
 uint64_t Tick_Count1 = 0, Tick_Count2 = 0;
@@ -336,12 +338,14 @@ float Flap_Error_LR = 0, Flap_Target_LR = 0, Flap_Error_RR = 0, Flap_Target_RR =
 ////////////////////////////////////////////////////MACRO VARIABLES///////////////////////////////////////////////////
 
 float Left_Macro_Speed = 0, Right_Macro_Speed = 0, Left_Macro_Speed_Temp = 0, Right_Macro_Speed_Temp = 0;
+float MLeft_Macro_Speed = 0, MRight_Macro_Speed = 0, MLeft_Macro_Speed_Temp = 0, MRight_Macro_Speed_Temp = 0;
 float Left_Macro_Count = 0, Right_Macro_Count = 0, Macro_Error = 0, Macro_Kp = 1, Correction_Speed = 0;
 uint8_t max_difference = 5;
 
 float M_Error_Change = 0, M_Prev_Error = 0, M_Error_Slope = 0, M_Error_Area = 0;
 float M_P = 0, M_I = 0, M_D = 0, M_Kp = 0, M_Ki = 0, M_Kd = 0;
 float Macro_Out = 0, Macro_Max_Speed = 50;
+float MMacro_Speed=0;
 /*                                                 MACRO VARIABLES                                                    */
 
 
@@ -421,6 +425,7 @@ float Var = 0, Var_Temp = 0;
 float Prev_Vel = 0, Current_Vel = 0;
 uint64_t Dummy_Tick = 0, Dummy_Tick_2 = 0;
 float Right_roll_value = 0, Right_pitch_value = 0, Right_Pitch = 0, Right_Roll = 0, Right_Roll_Final = 0, Right_Pitch_Final = 0;
+float flap_pos = 0.0f;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -492,6 +497,9 @@ void Left_Frame_Controls (void);
  void Frame_Controls_Sensor_BLE(void);
  void Dynamic_Width_Corrections(void);
  void Macro(void);
+ void Frame_Manual_Controls(void);
+ void Flap_Sensing(void);
+
  //void Set_Motor_Position (uint8_t Axis, float Position);
 /* USER CODE END PFP */
 
@@ -936,16 +944,27 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 		
 		if(OPERATION_MONITOR_FLAG==NULL)
 		{
+			Flap_Sensing();
 			Drive_Wheel_Controls_Vel_Based();
 ////Left_Frame_Controls();
 			New_Steering_Controls();
 		//Frame_Controls_Sensor_BLE();
 		//All_Macro_Sensing();
   	//Frame_Controls();
-		//Dynamic_Width_Adjustment();
+		Dynamic_Width_Adjustment();
 			Shearing_Motors();
 			Macro();
 		//Pitch_Control();
+			
+			
+			Frame_Manual_Controls();
+			
+//	if (Cont != Cont_temp)
+//	{
+//		for(uint8_t i=0; i<3 ; i++) Set_Motor_Velocity(Contour, Cont);
+//		
+//		Cont_temp = Cont;
+//	}
 		}
 	else{Emergency_Stop();}
 
@@ -4186,7 +4205,7 @@ void New_Drive_Controls_V2(void)
 
 void Drive_Wheel_Controls_Vel_Based(void)
 {
-	if (Mode != 2)
+	if (Mode == 1)
 	{
 	Input_Vel = Speed * 15;
 	Input_Vel = Steering_Mode != 1 ? 15 : Input_Vel;
@@ -5438,18 +5457,130 @@ void Macro()
 	
 	if (Left_Macro_Speed != Left_Macro_Speed_Temp)
 	{
-		Set_Motor_Velocity(12, Left_Macro_Speed);
+		for(uint8_t i=0; i<3 ; i++) Set_Motor_Velocity(12, Left_Macro_Speed);
 		
 		Left_Macro_Speed_Temp = Left_Macro_Speed;
 	}
 	
 	if (Right_Macro_Speed != Right_Macro_Speed_Temp)
 	{
-		Set_Motor_Velocity(13, Right_Macro_Speed);
+		for(uint8_t i=0; i<3 ; i++) Set_Motor_Velocity(13, Right_Macro_Speed);
 		
 		Right_Macro_Speed_Temp = Right_Macro_Speed;
 	}
 }
+
+void Frame_Manual_Controls(void)
+{
+    static int zero_command_count = 0;
+    int vert_speed = 0;
+    int cont_speed = 0;
+
+    if (Mode == 3)
+    {
+        zero_command_count = 0;  // Reset latch on manual mode
+
+        switch (Joystick)
+        {
+            case 1:
+                vert_speed = 10;
+                break;
+            case 2:
+                vert_speed = -10;
+                break;
+            case 3:
+                cont_speed = 10;
+                break;
+            case 4:
+                cont_speed = -10;
+                break;
+            case 0:
+            default:
+                vert_speed = 0;
+                cont_speed = 0;
+                break;
+        }
+
+        R_Vert_Speed = vert_speed;
+        Contour_Speed = cont_speed;
+
+        // Set speeds only once here, using a consolidated command
+//        Set_Motor_Speed("VERT_MOTOR", Vert_Speed);
+//        Set_Motor_Speed("CONT_MOTOR", Cont_Speed);
+				
+				Set_Motor_Velocity (RVert , R_Vert_Speed );
+				Set_Motor_Velocity (Contour , Contour_Speed );
+    }
+    else
+    {
+        // Latch zero speed commands up to 3 times only
+        if (zero_command_count < 3)
+        {
+            Set_Motor_Velocity (RVert , 0 );
+            Set_Motor_Velocity (Contour , 0 );
+            zero_command_count++;
+        }
+        R_Vert_Speed = 0;
+        Contour_Speed = 0;
+    }
+}
+
+void Flap_Sensing(void)
+{
+    flap_pos = -(FL_Angle + 32.5f);
+
+    /* If not in shearing mode, stop motor and exit */
+    if ((Shearing == 3) && (Mode != 2))
+    {
+
+
+    /* Convert angle:
+       -32.5 -> 0
+       More negative -> positive value */
+    
+
+    /* Motor control logic */
+    if (flap_pos >= 1.0f && flap_pos <= 15.0f)
+    {
+        MMacro_Speed = 10;
+    }
+    else if (flap_pos > 35.0f)
+    {
+        MMacro_Speed = -10;
+    }
+    else
+    {
+        MMacro_Speed = 0;
+    }
+	}
+		
+	else
+	{
+		MMacro_Speed = 0;
+	}
+		
+		
+		MLeft_Macro_Speed = MRight_Macro_Speed = MMacro_Speed;
+	
+	if (MLeft_Macro_Speed != MLeft_Macro_Speed_Temp)
+	{
+		for(uint8_t i=0; i<3 ; i++) Set_Motor_Velocity(12, MLeft_Macro_Speed);
+		
+		MLeft_Macro_Speed_Temp = MLeft_Macro_Speed;
+	}
+	
+	if (MRight_Macro_Speed != MRight_Macro_Speed_Temp)
+	{
+		for(uint8_t i=0; i<3 ; i++) Set_Motor_Velocity(13, MRight_Macro_Speed);
+		
+		MRight_Macro_Speed_Temp = MRight_Macro_Speed;
+	}
+
+    /* Function exits after one execution */
+}
+
+
+
 /* USER CODE END 4 */
 
 /**
