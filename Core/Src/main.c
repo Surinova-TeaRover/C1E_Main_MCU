@@ -178,7 +178,7 @@ uint8_t LFD=1,LRD=2,RFD=3,RRD=4,LVert=5, RVert=6, Contour=7, LFS=8, LRS=9, RFS=1
 /* 							IMU_VARIABLES 						*/
 
 float L_Roll=0, L_Pitch=0, R_Roll=0, R_Pitch=0;
-float Left_Roll_Pos = 1.5 - 2, Right_Roll_Pos = 1.25, Right_Pitch_Pos = 3.75, Left_Pitch_Pos=17.4, Left_Column_Error =0 , Left_Col_Pos = 0;
+float Left_Roll_Pos = 1.5 - 2, Right_Roll_Pos = 2.75, Right_Pitch_Pos = 4.5, Left_Pitch_Pos=17.4, Left_Column_Error =0 , Left_Col_Pos = 0;
 float Right_Roll_Home_Pos = -1, Right_Pitch_Home_Pos = -0.2;
 //float Left_Roll_Pos = 1.5 - 2, Right_Roll_Pos = 1.9, Right_Pitch_Pos = 4.93, Left_Pitch_Pos=17.4, Left_Column_Error =0 , Left_Col_Pos = 0;
 bool Left_IMU_State=1, Initiate_Process=0;
@@ -189,7 +189,7 @@ float Shear_Roll = 0, Shear_Pitch = 0;
 float Zero_Turn_Angle = 27, Track_Width = 1800, Min_Track_Width = 1800, Wheel_Base = 900;;
 uint16_t Steer_Angle[5];
 float LF_Steering=0, LR_Steering=0, RF_Steering=0, RR_Steering=0;	
-float LF_HomePos =9, LR_HomePos= 698 , RF_HomePos= 452 , RR_HomePos = 503+2;	// -->	HOME POSITIONS LF_HomePos = 190, LR_HomePos= 87 , RF_HomePos= 220 , RR_HomePos = 623;
+float LF_HomePos =4, LR_HomePos= 56.5+28.5 , RF_HomePos= -19  , RR_HomePos = -101;	// -->	HOME POSITIONS LF_HomePos = 190, LR_HomePos= 87 , RF_HomePos= 220 , RR_HomePos = 623;
 float LF_Speed=0, LR_Speed=0, RF_Speed=0, RR_Speed=0 , LF_Speed_Temp =0, LR_Speed_Temp =0 , RF_Speed_Temp=0, RR_Speed_Temp=0, LF_Error=0, LR_Error=0, RF_Error=0, RR_Error=0;		
 //int LF_Speed=0, LR_Speed=0, RF_Speed=0, RR_Speed=0 , LF_Speed_Temp =0, LR_Speed_Temp =0 , RF_Speed_Temp=0, RR_Speed_Temp=0;
 //float LF_Error=0, LR_Error=0, RF_Error=0, RR_Error=0;
@@ -950,7 +950,7 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 			New_Steering_Controls();
 		//Frame_Controls_Sensor_BLE();
 		//All_Macro_Sensing();
-  	//Frame_Controls();
+  	Frame_Controls();
 		Dynamic_Width_Adjustment();
 			Shearing_Motors();
 			Macro();
@@ -2717,7 +2717,7 @@ void Operations_Monitor(void)
 	
 	if (HAL_GetTick() - Heartbeat_Tick >= 1500)
 	{
-		for (uint8_t i = 1; i < 21; i++)
+		for (uint8_t i = 1; i < 17; i++)
 		{
 			if (i != 5 && i != 17 && i != 14)
 			{
@@ -2744,7 +2744,7 @@ void Operations_Monitor(void)
 	
 	if (HAL_GetTick() - Drive_Error_Tick >= 1000)
 	{
-		for (uint8_t k = 1; k < 21; k++)
+		for (uint8_t k = 1; k < 17; k++)
 		{
 			if ((k != 5) && (k != 17) && (k != 14) )
 			{
@@ -3079,7 +3079,7 @@ void Frame_Controls(void)
 		if( R_Vert_Speed_Temp != R_Vert_Speed ) 																															// checking if the new value is not equal to old value
 		{
 			Input_Velocity[6] = R_Vert_Speed;
-			Set_Motor_Velocity (RVert , -R_Vert_Speed );	  //-
+			//Set_Motor_Velocity (RVert , -R_Vert_Speed );	  //-
 			R_Vert_Speed_Temp = R_Vert_Speed ;																																// Overwriting old value with new value.
 		} 
 	//	Contour_Speed = Contour_Speed > 0 && Contour_Motor_Count >= 550 ? 0 : Contour_Speed < 0 && Contour_Motor_Count <= -550 ? 0 : Contour_Speed ;
@@ -3087,7 +3087,7 @@ void Frame_Controls(void)
 		if( Contour_Speed_Temp != Contour_Speed ) 																														// checking if the new value is not equal to old value
 		{
 			Input_Velocity[7] = Contour_Speed;
-			Set_Motor_Velocity (Contour , Contour_Speed );
+			//Set_Motor_Velocity (Contour , Contour_Speed );
 			Contour_Speed_Temp = Contour_Speed ;																															// Overwriting old value with new value.
 		}		
 		
