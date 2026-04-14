@@ -957,7 +957,7 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 		//Pitch_Control();
 			
 			
-			Frame_Manual_Controls();
+			/////Frame_Manual_Controls();
 			
 //	if (Cont != Cont_temp)
 //	{
@@ -3079,7 +3079,7 @@ void Frame_Controls(void)
 		if( R_Vert_Speed_Temp != R_Vert_Speed ) 																															// checking if the new value is not equal to old value
 		{
 			Input_Velocity[6] = R_Vert_Speed;
-			//Set_Motor_Velocity (RVert , -R_Vert_Speed );	  //-
+			Set_Motor_Velocity (RVert , -R_Vert_Speed );	  //-
 			R_Vert_Speed_Temp = R_Vert_Speed ;																																// Overwriting old value with new value.
 		} 
 	//	Contour_Speed = Contour_Speed > 0 && Contour_Motor_Count >= 550 ? 0 : Contour_Speed < 0 && Contour_Motor_Count <= -550 ? 0 : Contour_Speed ;
@@ -3087,7 +3087,7 @@ void Frame_Controls(void)
 		if( Contour_Speed_Temp != Contour_Speed ) 																														// checking if the new value is not equal to old value
 		{
 			Input_Velocity[7] = Contour_Speed;
-			//Set_Motor_Velocity (Contour , Contour_Speed );
+			Set_Motor_Velocity (Contour , Contour_Speed );
 			Contour_Speed_Temp = Contour_Speed ;																															// Overwriting old value with new value.
 		}		
 		
