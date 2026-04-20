@@ -189,7 +189,7 @@ float Shear_Roll = 0, Shear_Pitch = 0;
 float Zero_Turn_Angle = 27, Track_Width = 1800, Min_Track_Width = 1800, Wheel_Base = 900;;
 uint16_t Steer_Angle[5];
 float LF_Steering=0, LR_Steering=0, RF_Steering=0, RR_Steering=0;	
-float LF_HomePos =4, LR_HomePos= 56.5+28.5 , RF_HomePos= -19  , RR_HomePos = -101;	// -->	HOME POSITIONS LF_HomePos = 190, LR_HomePos= 87 , RF_HomePos= 220 , RR_HomePos = 623;
+float LF_HomePos =57, LR_HomePos= 419 , RF_HomePos= 570  , RR_HomePos = 77;	// -->	HOME POSITIONS LF_HomePos = 190, LR_HomePos= 87 , RF_HomePos= 220 , RR_HomePos = 623;
 float LF_Speed=0, LR_Speed=0, RF_Speed=0, RR_Speed=0 , LF_Speed_Temp =0, LR_Speed_Temp =0 , RF_Speed_Temp=0, RR_Speed_Temp=0, LF_Error=0, LR_Error=0, RF_Error=0, RR_Error=0;		
 //int LF_Speed=0, LR_Speed=0, RF_Speed=0, RR_Speed=0 , LF_Speed_Temp =0, LR_Speed_Temp =0 , RF_Speed_Temp=0, RR_Speed_Temp=0;
 //float LF_Error=0, LR_Error=0, RF_Error=0, RR_Error=0;
@@ -819,8 +819,8 @@ int main(void)
   MX_DMA_Init();
   MX_CAN1_Init();
   MX_CAN2_Init();
-//  MX_UART4_Init();
-//  MX_UART5_Init();
+////  MX_UART4_Init();
+////  MX_UART5_Init();
   MX_TIM14_Init();
   MX_I2C3_Init();
   MX_I2C1_Init();
@@ -927,6 +927,10 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 	//Initiate_Process = SET;
 //	Error_Handler();
 //HAL_TIM_Base_Start_IT(&htim14);
+
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6, GPIO_PIN_SET);
+		HAL_Delay(3000);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -936,29 +940,33 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 		
 	
 		test++;
+
 		BT_State = BT_READ;
 		//Initial_Msg();
 		Joystick_Reception();
 		EEPROM_Store_Data();
+////////////					Drive_Wheel_Controls_Vel_Based();
+////////////					New_Steering_Controls();
 		Operations_Monitor();
+		
 		
 		if(OPERATION_MONITOR_FLAG==NULL)
 		{
-			Flap_Sensing();
-			Drive_Wheel_Controls_Vel_Based();
-////Left_Frame_Controls();
-			New_Steering_Controls();
-		//Frame_Controls_Sensor_BLE();
-		//All_Macro_Sensing();
-  	Frame_Controls();
-		Dynamic_Width_Adjustment();
-			Shearing_Motors();
-			Macro();
-		//Pitch_Control();
-			
-			
-			/////Frame_Manual_Controls();
-			
+//////////			Flap_Sensing();
+//////////			Drive_Wheel_Controls_Vel_Based();
+//////////////Left_Frame_Controls();
+//////////			New_Steering_Controls();
+//////////		//Frame_Controls_Sensor_BLE();
+//////////		//All_Macro_Sensing();
+//////////			Frame_Controls();
+//////////			Dynamic_Width_Adjustment();
+//////////			Shearing_Motors();
+//////////			Macro();
+//////////		//Pitch_Control();
+//////////			
+//////////			
+//////////			Frame_Manual_Controls();
+//////////			
 //	if (Cont != Cont_temp)
 //	{
 //		for(uint8_t i=0; i<3 ; i++) Set_Motor_Velocity(Contour, Cont);
@@ -1367,7 +1375,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, LED_1_Pin|LED_2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, LED_1_Pin|LED_2_Pin|GPIO_PIN_6, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, B1_Pin|Buzzer_1_Pin|Buzzer_2_Pin, GPIO_PIN_RESET);
@@ -1379,12 +1387,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
   HAL_GPIO_Init(LED_1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : LED_2_Pin */
-  GPIO_InitStruct.Pin = LED_2_Pin;
+  /*Configure GPIO pins : LED_2_Pin PC6 */
+  GPIO_InitStruct.Pin = LED_2_Pin|GPIO_PIN_6;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LED_2_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : UART4_State_Pin */
   GPIO_InitStruct.Pin = UART4_State_Pin;
@@ -2744,7 +2752,7 @@ void Operations_Monitor(void)
 	
 	if (HAL_GetTick() - Drive_Error_Tick >= 1000)
 	{
-		for (uint8_t k = 1; k < 17; k++)
+		for (uint8_t k = 1; k < 16; k++)
 		{
 			if ((k != 5) && (k != 17) && (k != 14) )
 			{
@@ -2761,7 +2769,7 @@ void Operations_Monitor(void)
 	if (HAL_GetTick() - Fet_Temp_Tick >= 1000)
 	{
 		
-		for (uint8_t i = 1; i < 17; i++)
+		for (uint8_t i = 1; i < 16; i++)
 		{
 			if (i != 5)
 			{
@@ -5439,8 +5447,8 @@ void Macro()
 			switch (Joystick)
 			{
 				case 0: Macro_Speed = 0; break;
-				case 1: Macro_Speed = 10; break;
-				case 2: Macro_Speed = -10; break;
+				case 1: Macro_Speed = 30; break;
+				case 2: Macro_Speed = -30; break;
 				default: break;
 			}
 			
