@@ -210,6 +210,7 @@ float L_Arm_Speed=0, R_Arm_Speed=0, L_Arm_Speed_Temp=0, R_Arm_Speed_Temp=0, Pitc
 _Bool Front_Left_Bush = 0, Front_Right_Bush = 0, Front_Bushes_Sensed = 0, First_Sense=0 , Rear_Bush=0;
 int Flaps_Target = 60, Flap_Error=0,Flap_Error_Right = 0,Flaps_Target_Right=60, Flap_Error_Left = 0, Flaps_Target_Left = 60;
 float Flap_Kp = 2, Pitch_Kp=2 ;
+_Bool Front_Left_Bush_Timer = 0, Front_Left_Bush_Timer_Active = 0;
 
 float Macro_Speed = 0;
 /* 							SENSING_VARIABLES 						*/
@@ -431,10 +432,10 @@ float flap_pos = 0.0f;
 /*					PITCH_SHEAR_CONTROL_VARIABLES					*/
 
 float Base_Pitch_Filtered = 0, Prev_Base_Pitch_Filtered = 0, Shear_Pitch_Filtered =0, Prev_Shear_Pitch_Filtered=0 ;
-float Base_Pitch_HomePos = 0, Shear_Pitch_HomePos = 0, Base_Pitch_Angle = 0, Shear_Pitch_Angle = 0;
+float Base_Pitch_HomePos = 0.0625, Shear_Pitch_HomePos = -63, Base_Pitch_Angle = 0, Shear_Pitch_Angle = 0;
 float Shear_Pitch_Error = 0;
 float Shear_Pitch_Speed = 0, Shear_Pitch_Speed_Temp = 0;
-uint8_t Shear_Pitch_Kp = 2;
+uint8_t Shear_Pitch_Kp = 8;
 /*					PITCH_SHEAR_CONTROL_VARIABLES					*/
 
 
@@ -984,7 +985,7 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 ////////
 
 
-		////Frame_Manual_Controls();
+//			Frame_Manual_Controls();
 			
 //	if (Cont != Cont_temp)
 //	{
@@ -5535,8 +5536,9 @@ void Frame_Manual_Controls(void)
 //        Set_Motor_Speed("VERT_MOTOR", Vert_Speed);
 //        Set_Motor_Speed("CONT_MOTOR", Cont_Speed);
 				
-				Set_Motor_Velocity (RVert , R_Vert_Speed );
-				Set_Motor_Velocity (Contour , Contour_Speed );
+//				Set_Motor_Velocity (RVert , R_Vert_Speed );
+				Set_Motor_Velocity (14 , R_Vert_Speed );
+//				Set_Motor_Velocity (Contour , Contour_Speed );
     }
     else
     {
@@ -5554,54 +5556,129 @@ void Frame_Manual_Controls(void)
 
 void Flap_Sensing(void)
 {
-    flap_pos = -(FL_Angle + 32.5f);
-
-    /* If not in shearing mode, stop motor and exit */
-    if ((Shearing == 3) && (Mode != 2))
+	
+	    /* -- 1. Sensor validity flag with 2-second debounce -- */
+    if (FL_Angle > 15)
     {
+        if (!Front_Left_Bush_Timer_Active)
+        {
+            Front_Left_Bush_Timer    = HAL_GetTick();
+            Front_Left_Bush_Timer_Active = 1;
+        }
 
-
-    /* Convert angle:
-       -32.5 -> 0
-       More negative -> positive value */
-    
-
-    /* Motor control logic */
-    if (flap_pos >= 1.0f && flap_pos <= 15.0f)
-    {
-        MMacro_Speed = 10;
+        if ((HAL_GetTick() - Front_Left_Bush_Timer) >= 2000)
+        {
+            Front_Left_Bush = 1;
+        }
     }
-    else if (flap_pos > 35.0f)
+    else
     {
-        MMacro_Speed = -10;
+        /* Angle dropped below 15 – reset timer and flag */
+        Front_Left_Bush          = 0;
+        Front_Left_Bush_Timer_Active = 0;
+        Front_Left_Bush_Timer    = 0;
+    }
+
+    /* -- 2. Only run in shearing mode 3, macro mode 2 -- */
+    if ((Shearing == 3) && (Mode == 2))
+    {
+        if (Front_Left_Bush)
+        {
+            /* -- Angle > 15 for 2s : Active sensing – PID-style control -- */
+            Flap_Error   = Flaps_Target - FL_Angle;
+            MMacro_Speed = (Flap_Error <= 2 && Flap_Error >= -2)
+                           ? 0
+                           : (int16_t)(Flap_Error * Flap_Kp);
+        }
+        else
+        {
+            /* -- Not confirmed yet or angle <= 15 : stop motor -- */
+            MMacro_Speed = 0;
+        }
+
+        /* -- 3. Clamp output -- */
+        MMacro_Speed = (MMacro_Speed >  30) ?  30 :
+                       (MMacro_Speed < -30) ? -30 : MMacro_Speed;
     }
     else
     {
         MMacro_Speed = 0;
     }
-	}
-		
-	else
-	{
-		MMacro_Speed = 0;
-	}
-		
-		
-		MLeft_Macro_Speed = MRight_Macro_Speed = MMacro_Speed;
+
+    /* -- 4. Mirror speed to both sides -- */
+    MLeft_Macro_Speed  = MMacro_Speed;
+    MRight_Macro_Speed = MMacro_Speed;
+
+    /* -- 5. Apply only on change (left) -- */
+    if (MLeft_Macro_Speed != MLeft_Macro_Speed_Temp)
+    {
+        for (uint8_t i = 0; i < 3; i++)
+        {
+            Set_Motor_Velocity(12, MLeft_Macro_Speed);
+        }
+        MLeft_Macro_Speed_Temp = MLeft_Macro_Speed;
+    }
+
+    /* -- 6. Apply only on change (right) -- */
+    if (MRight_Macro_Speed != MRight_Macro_Speed_Temp)
+    {
+        for (uint8_t i = 0; i < 3; i++)
+        {
+            Set_Motor_Velocity(13, MRight_Macro_Speed);
+        }
+        MRight_Macro_Speed_Temp = MRight_Macro_Speed;
+    }
 	
-	if (MLeft_Macro_Speed != MLeft_Macro_Speed_Temp)
-	{
-		for(uint8_t i=0; i<3 ; i++) Set_Motor_Velocity(12, MLeft_Macro_Speed);
-		
-		MLeft_Macro_Speed_Temp = MLeft_Macro_Speed;
-	}
 	
-	if (MRight_Macro_Speed != MRight_Macro_Speed_Temp)
-	{
-		for(uint8_t i=0; i<3 ; i++) Set_Motor_Velocity(13, MRight_Macro_Speed);
-		
-		MRight_Macro_Speed_Temp = MRight_Macro_Speed;
-	}
+	
+//////////    flap_pos = -(FL_Angle + 32.5f);
+
+//////////    /* If not in shearing mode, stop motor and exit */
+//////////    if ((Shearing == 3) && (Mode != 2))
+//////////    {
+
+
+//////////    /* Convert angle:
+//////////       -32.5 -> 0
+//////////       More negative -> positive value */
+//////////    
+
+//////////    /* Motor control logic */
+//////////    if (flap_pos >= 1.0f && flap_pos <= 15.0f)
+//////////    {
+//////////        MMacro_Speed = 10;
+//////////    }
+//////////    else if (flap_pos > 35.0f)
+//////////    {
+//////////        MMacro_Speed = -10;
+//////////    }
+//////////    else
+//////////    {
+//////////        MMacro_Speed = 0;
+//////////    }
+//////////	}
+//////////		
+//////////	else
+//////////	{
+//////////		MMacro_Speed = 0;
+//////////	}
+//////////		
+//////////		
+//////////		MLeft_Macro_Speed = MRight_Macro_Speed = MMacro_Speed;
+//////////	
+//////////	if (MLeft_Macro_Speed != MLeft_Macro_Speed_Temp)
+//////////	{
+//////////		for(uint8_t i=0; i<3 ; i++) Set_Motor_Velocity(12, MLeft_Macro_Speed);
+//////////		
+//////////		MLeft_Macro_Speed_Temp = MLeft_Macro_Speed;
+//////////	}
+//////////	
+//////////	if (MRight_Macro_Speed != MRight_Macro_Speed_Temp)
+//////////	{
+//////////		for(uint8_t i=0; i<3 ; i++) Set_Motor_Velocity(13, MRight_Macro_Speed);
+//////////		
+//////////		MRight_Macro_Speed_Temp = MRight_Macro_Speed;
+//////////	}
 
     /* Function exits after one execution */
 }
@@ -5618,18 +5695,23 @@ void Pitch_Arm_Control_IMU(void)
 	Shear_Pitch_Angle = Shear_Pitch_HomePos - Shear_Pitch_Filtered;
 	
 	
-	Shear_Pitch_Error = Base_Pitch_Angle - Shear_Pitch_Angle;
+//	Shear_Pitch_Error = -(Base_Pitch_Angle - Shear_Pitch_Angle);
+	
+	//Shear_Pitch_Error =(Base_Pitch_Angle - Shear_Pitch_Angle);
+	
+	 Shear_Pitch_Error = (Shear_Pitch_Angle + Base_Pitch_Angle);
 	
 	
-	Shear_Pitch_Speed = fabs(Shear_Pitch_Error) < 2 ? 0 : Shear_Pitch_Error * Shear_Pitch_Kp;
+	Shear_Pitch_Speed = fabs(Shear_Pitch_Error) < 0.2 ? 0 : Shear_Pitch_Error * Shear_Pitch_Kp;
 
-    if (Shear_Pitch_Speed > 50) Shear_Pitch_Speed = 50;
-    if (Shear_Pitch_Speed < -50) Shear_Pitch_Speed = -50;
-
+//    if (Shear_Pitch_Speed > 50) Shear_Pitch_Speed = 50;
+//    if (Shear_Pitch_Speed < -50) Shear_Pitch_Speed = -50;
+	
+	Shear_Pitch_Speed = Shear_Pitch_Speed > 25 ? 25 : Shear_Pitch_Speed < -25 ? -25 : ( (Shear_Pitch_Speed < 2) && (Shear_Pitch_Speed > -2) ) ? 0 : Shear_Pitch_Speed ;
 		
 	if (Shear_Pitch_Speed != Shear_Pitch_Speed_Temp)
 	{
-//		for(uint8_t i=0; i<3 ; i++) Set_Motor_Velocity(14, Shear_Pitch_Speed);
+		for(uint8_t i=0; i<3 ; i++) Set_Motor_Velocity(14, Shear_Pitch_Speed);
 		Shear_Pitch_Speed_Temp = Shear_Pitch_Speed;
 	}
 }
