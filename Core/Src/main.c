@@ -427,6 +427,17 @@ float Prev_Vel = 0, Current_Vel = 0;
 uint64_t Dummy_Tick = 0, Dummy_Tick_2 = 0;
 float Right_roll_value = 0, Right_pitch_value = 0, Right_Pitch = 0, Right_Roll = 0, Right_Roll_Final = 0, Right_Pitch_Final = 0;
 float flap_pos = 0.0f;
+
+/*					PITCH_SHEAR_CONTROL_VARIABLES					*/
+
+float Base_Pitch_Filtered = 0, Prev_Base_Pitch_Filtered = 0, Shear_Pitch_Filtered =0, Prev_Shear_Pitch_Filtered=0 ;
+float Base_Pitch_HomePos = 0, Shear_Pitch_HomePos = 0, Base_Pitch_Angle = 0, Shear_Pitch_Angle = 0;
+float Shear_Pitch_Error = 0;
+float Shear_Pitch_Speed = 0, Shear_Pitch_Speed_Temp = 0;
+uint8_t Shear_Pitch_Kp = 2;
+/*					PITCH_SHEAR_CONTROL_VARIABLES					*/
+
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -500,6 +511,7 @@ void Left_Frame_Controls (void);
  void Macro(void);
  void Frame_Manual_Controls(void);
  void Flap_Sensing(void);
+ void Pitch_Arm_Control_IMU(void);
 
  //void Set_Motor_Position (uint8_t Axis, float Position);
 /* USER CODE END PFP */
@@ -533,7 +545,10 @@ double Right_Contour_LPF(double input, double prev_output, double alpha) {
     return alpha * input + (1.0 - alpha) * prev_output;
 }
 
-double Shearing_LPF(double input, double prev_output, double alpha) {
+double Shearing_IMU_LPF(double input, double prev_output, double alpha) {
+    return alpha * input + (1.0 - alpha) * prev_output;
+}
+double Base_IMU_LPF(double input, double prev_output, double alpha) {
     return alpha * input + (1.0 - alpha) * prev_output;
 }
 
@@ -963,7 +978,7 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 ////////			Dynamic_Width_Adjustment();
 			Shearing_Motors();
 			Macro();
-		//Pitch_Control();
+			Pitch_Arm_Control_IMU();
 			
 			
 ////////
@@ -3133,29 +3148,29 @@ void Frame_Controls_Sensor_BLE(void)
 */
 		//R_R_Err =  Right_Pitch_Pos - R_Pitch 	;	
 		
-	
-		R_R_Err =  Right_Pitch_Home_Pos - BLE_Pitch 	;																																	// R roll error = Target value(-3.0625) - current value.
-		
-		R_R_Err = R_R_Err > 20 || R_R_Err < -20 ? Prev_R_R_Err : R_R_Err;
-		
-		R_R_Err = R_R_Err < 0.2 && R_R_Err > -0.2 ? 0 : R_R_Err;
-	
-		R_Vert_Speed = Right_Verticality_PID ( R_R_Err , NULL );																							// R Vertical speed from right verticality pid function. 
-	
-	  //R_Vert_Speed = (( R_Vert_Speed <= 2 ) && ( R_Vert_Speed >= -2 ) ) ? 0 : R_Vert_Speed;									// Assigning 0 to R Vertical Speed if it is between - 2 to 2 (to avoid oscillations)
+//	
+//		R_R_Err =  Right_Pitch_Home_Pos - BLE_Pitch 	;																																	// R roll error = Target value(-3.0625) - current value.
+//		
+//		R_R_Err = R_R_Err > 20 || R_R_Err < -20 ? Prev_R_R_Err : R_R_Err;
+//		
+//		R_R_Err = R_R_Err < 0.2 && R_R_Err > -0.2 ? 0 : R_R_Err;
+//	
+//		R_Vert_Speed = Right_Verticality_PID ( R_R_Err , NULL );																							// R Vertical speed from right verticality pid function. 
+//	
+//	  //R_Vert_Speed = (( R_Vert_Speed <= 2 ) && ( R_Vert_Speed >= -2 ) ) ? 0 : R_Vert_Speed;									// Assigning 0 to R Vertical Speed if it is between - 2 to 2 (to avoid oscillations)
 
-		Right_Error_Flag =( R_Vert_Speed == 0 ) ? NULL : SET;																									// (CHECK) for basic testing. to set once the vertical speed is zero(correction completed) ISSUE
+//		Right_Error_Flag =( R_Vert_Speed == 0 ) ? NULL : SET;																									// (CHECK) for basic testing. to set once the vertical speed is zero(correction completed) ISSUE
 
 
-		//Contour_Avg =	R_Pitch ;																																						
-		
-		//C_Err =   Right_Roll_Pos - R_Roll ;	
-		
-		C_Err =   Right_Roll_Home_Pos - BLE_Roll ;	
-		
-		C_Err = C_Err > 20 || C_Err < -20 ? Prev_C_Err : C_Err;
-		
-		C_Err = C_Err < 0.2 && C_Err > -0.2 ? 0 : C_Err;
+//		//Contour_Avg =	R_Pitch ;																																						
+//		
+//		//C_Err =   Right_Roll_Pos - R_Roll ;	
+//		
+//		C_Err =   Right_Roll_Home_Pos - BLE_Roll ;	
+//		
+//		C_Err = C_Err > 20 || C_Err < -20 ? Prev_C_Err : C_Err;
+//		
+//		C_Err = C_Err < 0.2 && C_Err > -0.2 ? 0 : C_Err;
 		
 		// (CHECK) Contour error = Target value(2.5) - current value.
 	
@@ -5590,6 +5605,35 @@ void Flap_Sensing(void)
 
     /* Function exits after one execution */
 }
+void Pitch_Arm_Control_IMU(void)
+{
+	
+	Base_Pitch_Filtered = Base_IMU_LPF(Base_Pitch, Prev_Base_Pitch_Filtered, ALPHA);
+	Prev_Base_Pitch_Filtered = Base_Pitch_Filtered;
+	
+	Shear_Pitch_Filtered = Shearing_IMU_LPF(Shear_Pitch, Prev_Shear_Pitch_Filtered, ALPHA);
+	Prev_Shear_Pitch_Filtered = Shear_Pitch_Filtered;
+	
+	Base_Pitch_Angle = Base_Pitch_HomePos - Base_Pitch_Filtered;
+	Shear_Pitch_Angle = Shear_Pitch_HomePos - Shear_Pitch_Filtered;
+	
+	
+	Shear_Pitch_Error = Base_Pitch_Angle - Shear_Pitch_Angle;
+	
+	
+	Shear_Pitch_Speed = fabs(Shear_Pitch_Error) < 2 ? 0 : Shear_Pitch_Error * Shear_Pitch_Kp;
+
+    if (Shear_Pitch_Speed > 50) Shear_Pitch_Speed = 50;
+    if (Shear_Pitch_Speed < -50) Shear_Pitch_Speed = -50;
+
+		
+	if (Shear_Pitch_Speed != Shear_Pitch_Speed_Temp)
+	{
+//		for(uint8_t i=0; i<3 ; i++) Set_Motor_Velocity(14, Shear_Pitch_Speed);
+		Shear_Pitch_Speed_Temp = Shear_Pitch_Speed;
+	}
+}
+
 
 
 
