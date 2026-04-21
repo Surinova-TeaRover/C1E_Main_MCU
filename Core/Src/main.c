@@ -178,8 +178,9 @@ uint8_t LFD=1,LRD=2,RFD=3,RRD=4,LVert=5, RVert=6, Contour=7, LFS=8, LRS=9, RFS=1
 /* 							IMU_VARIABLES 						*/
 
 float L_Roll=0, L_Pitch=0, R_Roll=0, R_Pitch=0;
-float Left_Roll_Pos = 1.5 - 2, Right_Roll_Pos = 2.75, Right_Pitch_Pos = 4.5, Left_Pitch_Pos=17.4, Left_Column_Error =0 , Left_Col_Pos = 0;
-float Right_Roll_Home_Pos = -1, Right_Pitch_Home_Pos = -0.2;
+float Left_Roll_Pos = 1.5 - 2, Right_Roll_Pos = 0.5625, Right_Pitch_Pos = 0.4375, Left_Pitch_Pos=17.4, Left_Column_Error =0 , Left_Col_Pos = 0;
+float Right_Roll_Home_Pos = 0.5625 , Right_Pitch_Home_Pos = 0.4375 ;
+float Base_Pitch =0 , Base_Roll = 0;
 //float Left_Roll_Pos = 1.5 - 2, Right_Roll_Pos = 1.9, Right_Pitch_Pos = 4.93, Left_Pitch_Pos=17.4, Left_Column_Error =0 , Left_Col_Pos = 0;
 bool Left_IMU_State=1, Initiate_Process=0;
 float Shear_Roll = 0, Shear_Pitch = 0;
@@ -238,11 +239,11 @@ float Absolute_Position_Float[20];
 float L_Vert_Speed=0, R_Vert_Speed=0, L_Vert_Speed_Temp=0, R_Vert_Speed_Temp=0, Contour_Speed=0, Contour_Speed_Temp=0;
 bool Left_Error_Flag=NULL , Right_Error_Flag=NULL , Contour_Error_Flag=NULL, FRAME_NO_ERROR_FLAG=SET,Contour_Limit=SET,Vertical_Limit=SET; 
 float  R_Error_Change=0, R_Error_Slope=0, R_Error_Area=0, R_Prev_Error=0;
-float R_Kp=7, R_Ki=0, R_Kd=5; 
+float R_Kp=15, R_Ki=0, R_Kd=5; 
 long R_P=0, R_I=0, R_D=0;
 float Error=0, L_Prev_Error=0, L_Error_Change=0, L_Error_Slope=0, L_Error_Area=0, Left_Out=0, Right_Out=0, Contour_Out=0;
 float  C_Error_Change=0, C_Error_Slope=0, C_Error_Area=0, C_Prev_Error=0;
-float C_Kp=9, C_Ki=2, C_Kd=5;      
+float C_Kp=11, C_Ki=2, C_Kd=5;      
 long C_P=0, C_I=0, C_D=0;
 double dt=0.01 ;
 int Left_Vertical_Error=0;
@@ -655,7 +656,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan1)
 			
 		case (IMU_L)	 :	L_Roll = ((int16_t)(RxData[1]<<8 | RxData[0]))/16.0;	L_Pitch = ((int16_t)(RxData[3]<<8 | RxData[2]))/16.0;				  Sensor_Id[1]++; Node_Id[21]++;	break; 
 		
-		case (IMU_R)	 :	R_Roll = ((int16_t)(RxData[1]<<8 | RxData[0]))/16.0;	R_Pitch = ((int16_t)(RxData[3]<<8 | RxData[2]))/16.0;				  Sensor_Id[2]++;Node_Id[22]++;		break;
+		case (IMU_R)	 :	R_Roll = ((int16_t)(RxData[1]<<8 | RxData[0]))/16.0;	R_Pitch = ((int16_t)(RxData[3]<<8 | RxData[2]))/16.0; Base_Roll = ((int16_t)(RxData[5]<<8 | RxData[4]))/16.0; Base_Pitch = ((int16_t)(RxData[7]<<8 | RxData[6]))/16.0;	 			  Sensor_Id[2]++;Node_Id[22]++;		break;
 			
 		case (LF_STEER): 	Steer_Angle[1] = CAN_SPI_READ(RxData);  			LF_Steering = New_Sensor_Pos ( Steer_Angle[1] , LF_HomePos ) ;						Sensor_Id[3]++;Node_Id[23]++;	 break;
 		
@@ -834,7 +835,7 @@ int main(void)
 	HAL_CAN_Start(&hcan2);HAL_Delay(1000);
 	HAL_CAN_ActivateNotification(&hcan2, CAN_IT_RX_FIFO1_MSG_PENDING);
 	
-	HAL_Delay(10000);
+	HAL_Delay(3000);
 //	for ( uint8_t i = 6 ; i < 25 ; i++ ) {	Start_Calibration_For (i, 8, 10); }
 //	for ( uint8_t i = 1 ; i < 5; i++ ) { Start_Calibration_For (6, 8, 5);Start_Calibration_For (13, 8, 5);Start_Calibration_For (12, 8, 5);Start_Calibration_For (14, 8, 5);}
 	
@@ -929,7 +930,7 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 //HAL_TIM_Base_Start_IT(&htim14);
 
 		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6, GPIO_PIN_SET);
-		HAL_Delay(3000);
+		HAL_Delay(6000);
 
   /* USER CODE END 2 */
 
@@ -952,21 +953,24 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 		
 		if(OPERATION_MONITOR_FLAG==NULL)
 		{
-//////////			Flap_Sensing();
-//////////			Drive_Wheel_Controls_Vel_Based();
-//////////////Left_Frame_Controls();
-//////////			New_Steering_Controls();
-//////////		//Frame_Controls_Sensor_BLE();
-//////////		//All_Macro_Sensing();
-//////////			Frame_Controls();
-//////////			Dynamic_Width_Adjustment();
-//////////			Shearing_Motors();
-//////////			Macro();
-//////////		//Pitch_Control();
-//////////			
-//////////			
-//////////			Frame_Manual_Controls();
-//////////			
+////////			Flap_Sensing();
+			Drive_Wheel_Controls_Vel_Based();
+////Left_Frame_Controls();
+			New_Steering_Controls();
+		//Frame_Controls_Sensor_BLE();
+		//All_Macro_Sensing();
+			Frame_Controls();
+////////			Dynamic_Width_Adjustment();
+			Shearing_Motors();
+			Macro();
+		//Pitch_Control();
+			
+			
+////////
+
+
+		////Frame_Manual_Controls();
+			
 //	if (Cont != Cont_temp)
 //	{
 //		for(uint8_t i=0; i<3 ; i++) Set_Motor_Velocity(Contour, Cont);
@@ -2727,7 +2731,7 @@ void Operations_Monitor(void)
 	{
 		for (uint8_t i = 1; i < 17; i++)
 		{
-			if (i != 5 && i != 17 && i != 14)
+			if (i != 5 && i != 17 && i != 14 && i!= 16)
 			{
 				if (Node_Id[i] == Node_Id_Temp[i]) 
 				{
@@ -2752,9 +2756,9 @@ void Operations_Monitor(void)
 	
 	if (HAL_GetTick() - Drive_Error_Tick >= 1000)
 	{
-		for (uint8_t k = 1; k < 16; k++)
+		for (uint8_t k = 1; k < 15; k++)
 		{
-			if ((k != 5) && (k != 17) && (k != 14) )
+			if ((k != 5) && (k != 17) && (k != 14) &&(k != 16) )
 			{
 				if (Axis_State[k] != 8)
 				{
@@ -4215,7 +4219,7 @@ void Drive_Wheel_Controls_Vel_Based(void)
 {
 	if (Mode == 1)
 	{
-	Input_Vel = Speed * 15;
+	Input_Vel = Speed * 35 ;
 	Input_Vel = Steering_Mode != 1 ? 15 : Input_Vel;
 	Left_Steering_Speed = Steering_Mode != 1 ? 0 : Left_Steering_Speed;
 	Right_Steering_Speed = Steering_Mode != 1 ? 0 : Right_Steering_Speed;
