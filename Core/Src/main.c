@@ -208,7 +208,7 @@ uint16_t FL_Home_Pos = 563 , FR_Home_Pos = 492, RL_Home_Pos = 0, RR_Home_Pos = 0
 int16_t Left_Arm_Motor_Count=0, Right_Arm_Motor_Count=0, Right_Arm_Motor_Value=0, Left_Arm_Motor_Value=0, Pitch_Arm_Motor_Count=0, Pitch_Arm_Motor_Value=0;
 float L_Arm_Speed=0, R_Arm_Speed=0, L_Arm_Speed_Temp=0, R_Arm_Speed_Temp=0, Pitch_Arm_Speed_Temp=0, Tri_Arm_Speed=0;double Pitch_Arm_Speed=0;
 _Bool Front_Left_Bush = 0, Front_Right_Bush = 0, Front_Bushes_Sensed = 0, First_Sense=0 , Rear_Bush=0;
-int Flaps_Target = -16, Flap_Error=0,Flap_Error_Right = 0,Flaps_Target_Right=60, Flap_Error_Left = 0, Flaps_Target_Left = 60;
+int Flaps_Target = -35, Flap_Error=0,Flap_Error_Right = 0,Flaps_Target_Right=60, Flap_Error_Left = 0, Flaps_Target_Left = 60;
 float Flap_Kp = 2, Pitch_Kp=2 ;
 _Bool Front_Left_Bush_Timer = 0, Front_Left_Bush_Timer_Active = 0;
 
@@ -979,7 +979,7 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 //		Frame_Controls();
 																							//			Dynamic_Width_Adjustment();
 			Shearing_Motors();
-//			Macro();
+			Macro();
 //			Pitch_Arm_Control_IMU();
 			
 			
@@ -2916,7 +2916,10 @@ void Operations_Monitor(void)
 		Pitch_Tick = HAL_GetTick();
 	}
 		
-	OPERATION_MONITOR_FLAG = Drive_Disconnected == SET || Sensor_Disconnected == SET || Drive_Errored == SET || FET_Temp_Exceeded == SET ? SET : NULL;// && FET_Temp_Exceeded == SET && Motor_Overloaded == SET && E_Stop == SET && Joystick_Disconnected == SET && Vertical_Limit_Exceeded == SET && Contour_Limit_Exceeded == SET && Pitch_Limit_Exceeded == SET && Vertical_Not_Responding == SET && Contour_Not_Responding == SET ? SET : NULL;
+	OPERATION_MONITOR_FLAG = Drive_Disconnected == SET  || 
+													 Sensor_Disconnected == SET || 
+													 Drive_Errored == SET || 
+													 FET_Temp_Exceeded == SET ? SET : NULL;// && FET_Temp_Exceeded == SET && Motor_Overloaded == SET && E_Stop == SET && Joystick_Disconnected == SET && Vertical_Limit_Exceeded == SET && Contour_Limit_Exceeded == SET && Pitch_Limit_Exceeded == SET && Vertical_Not_Responding == SET && Contour_Not_Responding == SET ? SET : NULL;
 }
 
 void Emergency_Stop(void)
@@ -4237,7 +4240,8 @@ void Drive_Wheel_Controls_Vel_Based(void)
 	if (Mode == 1)
 	{
 	Input_Vel = Speed * 35 ;
-	Input_Vel = Steering_Mode != 1 ? 15 : Input_Vel;
+	Input_Vel = Input_Vel > 60 ? 60 : Input_Vel;
+	Input_Vel = Steering_Mode != 1 ? 35 : Input_Vel;
 	Left_Steering_Speed = Steering_Mode != 1 ? 0 : Left_Steering_Speed;
 	Right_Steering_Speed = Steering_Mode != 1 ? 0 : Right_Steering_Speed;
 	
@@ -5560,7 +5564,7 @@ void Flap_Sensing(void)
 //	FR_Angle = -(FR_Angle);
 	
 	    /* -- 1. Sensor validity flag with 2-second debounce -- */
-    if (FR_Angle < -10)
+    if (FR_Angle < -15)
     {
         if (!Front_Left_Bush_Timer_Active)
         {
