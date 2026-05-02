@@ -240,11 +240,11 @@ float Absolute_Position_Float[20];
 float L_Vert_Speed=0, R_Vert_Speed=0, L_Vert_Speed_Temp=0, R_Vert_Speed_Temp=0, Contour_Speed=0, Contour_Speed_Temp=0;
 bool Left_Error_Flag=NULL , Right_Error_Flag=NULL , Contour_Error_Flag=NULL, FRAME_NO_ERROR_FLAG=SET,Contour_Limit=SET,Vertical_Limit=SET; 
 float  R_Error_Change=0, R_Error_Slope=0, R_Error_Area=0, R_Prev_Error=0;
-float R_Kp=15, R_Ki=0, R_Kd=5; 
+float R_Kp=40, R_Ki=5, R_Kd=20; 
 long R_P=0, R_I=0, R_D=0;
 float Error=0, L_Prev_Error=0, L_Error_Change=0, L_Error_Slope=0, L_Error_Area=0, Left_Out=0, Right_Out=0, Contour_Out=0;
 float  C_Error_Change=0, C_Error_Slope=0, C_Error_Area=0, C_Prev_Error=0;
-float C_Kp=11, C_Ki=2, C_Kd=5;      
+float C_Kp=25, C_Ki=2, C_Kd=10;      
 long C_P=0, C_I=0, C_D=0;
 double dt=0.01 ;
 int Left_Vertical_Error=0;
@@ -971,7 +971,7 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 		
 		if(OPERATION_MONITOR_FLAG==NULL)
 		{
-			Flap_Sensing();
+//			Flap_Sensing();
 			
 			Drive_Wheel_Controls_Vel_Based();
 																							//Left_Frame_Controls();
@@ -981,7 +981,7 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 			Frame_Controls();
 			Dynamic_Width_Adjustment();
 			Shearing_Motors();
-//			Macro();
+			Macro();
 			Pitch_Arm_Control_IMU();
 			
 			
