@@ -500,6 +500,7 @@ void Left_Frame_Controls (void);
  void Start_Continuous_Sending(char command);
  void UART_tx(void);
  void Initial_Msg(void);
+ void Start_Continuous_Sending (char command);
  void Flap_Sensor_Pos(double Sensor_Value, double Zero_Pos);
  float Top_Sensing_PID ( float Flap_Value , unsigned long long 	R_Time_Stamp );
  void All_Macro_Sensing(void);
@@ -959,7 +960,8 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 		test++;
 
 		BT_State = BT_READ;
-		//Initial_Msg();
+		Initial_Msg();
+////		Start_Continuous_Sending(BT_State);
 		Joystick_Reception();
 		EEPROM_Store_Data();
 ////////////					Drive_Wheel_Controls_Vel_Based();
@@ -976,17 +978,17 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 			New_Steering_Controls();
 																							//Frame_Controls_Sensor_BLE();
 																							//All_Macro_Sensing();
-//		Frame_Controls();
-																							//			Dynamic_Width_Adjustment();
+			Frame_Controls();
+			Dynamic_Width_Adjustment();
 			Shearing_Motors();
-			Macro();
-//			Pitch_Arm_Control_IMU();
+//			Macro();
+			Pitch_Arm_Control_IMU();
 			
 			
 
 
 
-			Frame_Manual_Controls();
+//			Frame_Manual_Controls();
 			
 //	if (Cont != Cont_temp)
 //	{
@@ -3735,9 +3737,9 @@ void Top_Sensing_Roll(void)
 void Dynamic_Width_Adjustment (void)
 {
 	//float Width_Speed=46.5/2 - 5;
-	float Width_Speed= 40;
+	float Width_Speed= 50;  //40
 	
-	if ( !Steering_Reset_Flag  && Steering_Mode >= 4 && Rover_Velocity > 10 )
+	if ( !Steering_Reset_Flag  && Steering_Mode >= 4 && Rover_Velocity > 25 )
 	{
 		if ( Steering_Mode == WIDTH_SHRINK && Angle_Ready ) 
 		{
@@ -4239,9 +4241,10 @@ void Drive_Wheel_Controls_Vel_Based(void)
 {
 	if (Mode == 1)
 	{
-	Input_Vel = Speed * 35 ;
+	Input_Vel = Speed * 17.5 ; //35
 	Input_Vel = Input_Vel > 60 ? 60 : Input_Vel;
 	Input_Vel = Steering_Mode != 1 ? 35 : Input_Vel;
+		Input_Vel = Steering_Mode >= 4 ? 35 : Input_Vel;
 	Left_Steering_Speed = Steering_Mode != 1 ? 0 : Left_Steering_Speed;
 	Right_Steering_Speed = Steering_Mode != 1 ? 0 : Right_Steering_Speed;
 	
@@ -5718,7 +5721,8 @@ void Pitch_Arm_Control_IMU(void)
 		
 	if (Shear_Pitch_Speed != Shear_Pitch_Speed_Temp)
 	{
-		for(uint8_t i=0; i<3 ; i++) Set_Motor_Velocity(14, Shear_Pitch_Speed);
+		for(uint8_t i=0; i<3 ; i++) 
+		Set_Motor_Velocity(14, Shear_Pitch_Speed);
 		Shear_Pitch_Speed_Temp = Shear_Pitch_Speed;
 	}
 }
