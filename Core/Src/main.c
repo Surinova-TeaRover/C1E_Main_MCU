@@ -204,11 +204,11 @@ float LFS_Filtered = 0, Prev_LFS_Filtered = 0, LRS_Filtered = 0, Prev_LRS_Filter
 
 float FL_Raw =0, FR_Raw = 0, RL_Raw = 0, RR_Raw = 0;
 float FL_Angle=0, FR_Angle=0, RL_Angle =0, RR_Angle=0, FL_Angle_Temp=0;
-uint16_t FL_Home_Pos = 563 , FR_Home_Pos = 492, RL_Home_Pos = 0, RR_Home_Pos = 0;
+uint16_t FL_Home_Pos = 563 , FR_Home_Pos = 471, RL_Home_Pos = 0, RR_Home_Pos = 0;
 int16_t Left_Arm_Motor_Count=0, Right_Arm_Motor_Count=0, Right_Arm_Motor_Value=0, Left_Arm_Motor_Value=0, Pitch_Arm_Motor_Count=0, Pitch_Arm_Motor_Value=0;
 float L_Arm_Speed=0, R_Arm_Speed=0, L_Arm_Speed_Temp=0, R_Arm_Speed_Temp=0, Pitch_Arm_Speed_Temp=0, Tri_Arm_Speed=0;double Pitch_Arm_Speed=0;
 _Bool Front_Left_Bush = 0, Front_Right_Bush = 0, Front_Bushes_Sensed = 0, First_Sense=0 , Rear_Bush=0;
-int Flaps_Target = -35, Flap_Error=0,Flap_Error_Right = 0,Flaps_Target_Right=60, Flap_Error_Left = 0, Flaps_Target_Left = 60;
+int Flaps_Target = 35, Flap_Error=0,Flap_Error_Right = 0,Flaps_Target_Right=60, Flap_Error_Left = 0, Flaps_Target_Left = 60;
 float Flap_Kp = 2, Pitch_Kp=2 ;
 _Bool Front_Left_Bush_Timer = 0, Front_Left_Bush_Timer_Active = 0;
 
@@ -240,11 +240,11 @@ float Absolute_Position_Float[20];
 float L_Vert_Speed=0, R_Vert_Speed=0, L_Vert_Speed_Temp=0, R_Vert_Speed_Temp=0, Contour_Speed=0, Contour_Speed_Temp=0;
 bool Left_Error_Flag=NULL , Right_Error_Flag=NULL , Contour_Error_Flag=NULL, FRAME_NO_ERROR_FLAG=SET,Contour_Limit=SET,Vertical_Limit=SET; 
 float  R_Error_Change=0, R_Error_Slope=0, R_Error_Area=0, R_Prev_Error=0;
-float R_Kp=40, R_Ki=5, R_Kd=20; 
+float R_Kp=25, R_Ki=0, R_Kd=15; 
 long R_P=0, R_I=0, R_D=0;
 float Error=0, L_Prev_Error=0, L_Error_Change=0, L_Error_Slope=0, L_Error_Area=0, Left_Out=0, Right_Out=0, Contour_Out=0;
 float  C_Error_Change=0, C_Error_Slope=0, C_Error_Area=0, C_Prev_Error=0;
-float C_Kp=25, C_Ki=2, C_Kd=10;      
+float C_Kp=15, C_Ki=0, C_Kd=15;      
 long C_P=0, C_I=0, C_D=0;
 double dt=0.01 ;
 int Left_Vertical_Error=0;
@@ -369,7 +369,7 @@ long RA_P=0,RA_I=0,RA_D=0;
 float RA_Kp=1,RA_Ki=0,RA_Kd=0;
 
 long P_P=0,P_I=0,P_D=0;
-float P_Kp=5,P_Ki=0,P_Kd=0;
+float P_Kp=5,P_Ki=0,P_Kd=3;
 
 float RightArm_Out=0,RA_Error_Change=0,RA_Error_Slope=0,RA_Error_Area=0,RA_Prev_Error=0;
 int8_t Test_Read,Test_Write;
@@ -711,7 +711,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan1)
 	R_Roll_Filtered = Right_Contour_LPF(R_Roll, Prev_R_Roll_Filtered, ALPHA);
 	Prev_R_Roll_Filtered = R_Roll_Filtered;
 	
-	R_Pitch_Filtered = Right_Contour_LPF (R_Pitch, Prev_R_Pitch_Filtered, ALPHA);
+	R_Pitch_Filtered = Right_Contour_LPF (R_Pitch, Prev_R_Pitch_Filtered, 0.5);
 	Prev_R_Pitch_Filtered = R_Pitch_Filtered;
 	
 	LFS_Filtered = LFS_LPF(LF_Steering, Prev_LFS_Filtered, ALPHA);
@@ -981,7 +981,7 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 			Frame_Controls();
 			Dynamic_Width_Adjustment();
 			Shearing_Motors();
-			Macro();
+//			Macro();
 			Pitch_Arm_Control_IMU();
 			
 			
@@ -3069,7 +3069,7 @@ void Frame_Controls(void)
 	
 		R_Vert_Speed = Right_Verticality_PID ( R_R_Err , NULL );																							// R Vertical speed from right verticality pid function. 
 	
-	  R_Vert_Speed = (( R_Vert_Speed <= 2 ) && ( R_Vert_Speed >= -2 ) ) ? 0 : R_Vert_Speed;									// Assigning 0 to R Vertical Speed if it is between - 2 to 2 (to avoid oscillations)
+	  R_Vert_Speed = (( R_Vert_Speed <= 4 ) && ( R_Vert_Speed >= -4 ) ) ? 0 : R_Vert_Speed;									// Assigning 0 to R Vertical Speed if it is between - 2 to 2 (to avoid oscillations)
 
 		Right_Error_Flag =( R_Vert_Speed == 0 ) ? NULL : SET;																									// (CHECK) for basic testing. to set once the vertical speed is zero(correction completed) ISSUE
 
@@ -5567,7 +5567,7 @@ void Flap_Sensing(void)
 //	FR_Angle = -(FR_Angle);
 	
 	    /* -- 1. Sensor validity flag with 2-second debounce -- */
-    if (FR_Angle < -15)
+    if (FR_Angle > 15)
     {
         if (!Front_Left_Bush_Timer_Active)
         {
@@ -5594,8 +5594,8 @@ void Flap_Sensing(void)
         if (Front_Left_Bush)
         {
             /* -- Angle > 15 for 2s : Active sensing – PID-style control -- */
-//            Flap_Error   = Flaps_Target - FR_Angle;
-						Flap_Error   = FR_Angle - Flaps_Target ;
+            Flap_Error   = Flaps_Target - FR_Angle; //Positive//
+//						Flap_Error   = FR_Angle - Flaps_Target ; // Negative//
             MMacro_Speed = (Flap_Error <= 2 && Flap_Error >= -2)
                            ? 0
                            : (int16_t)(Flap_Error * Flap_Kp);
@@ -5712,7 +5712,9 @@ void Pitch_Arm_Control_IMU(void)
 	 Shear_Pitch_Error = (Shear_Pitch_Angle + Base_Pitch_Angle);
 	
 	
-	Shear_Pitch_Speed = fabs(Shear_Pitch_Error) < 0.2 ? 0 : Shear_Pitch_Error * Shear_Pitch_Kp;
+//	Shear_Pitch_Speed = fabs(Shear_Pitch_Error) < 0.2 ? 0 : Shear_Pitch_Error * Shear_Pitch_Kp;
+	
+	Shear_Pitch_Speed = fabs(Shear_Pitch_Error) < 0.2 ? 0 : Pitch_Arm_PID ( Shear_Pitch_Error , NULL );
 
 //    if (Shear_Pitch_Speed > 50) Shear_Pitch_Speed = 50;
 //    if (Shear_Pitch_Speed < -50) Shear_Pitch_Speed = -50;
