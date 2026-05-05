@@ -204,7 +204,7 @@ float LFS_Filtered = 0, Prev_LFS_Filtered = 0, LRS_Filtered = 0, Prev_LRS_Filter
 
 float FL_Raw =0, FR_Raw = 0, RL_Raw = 0, RR_Raw = 0;
 float FL_Angle=0, FR_Angle=0, RL_Angle =0, RR_Angle=0, FL_Angle_Temp=0;
-uint16_t FL_Home_Pos = 563 , FR_Home_Pos = 471, RL_Home_Pos = 0, RR_Home_Pos = 0;
+uint16_t FL_Home_Pos = 563 , FR_Home_Pos = 362 , RL_Home_Pos = 0, RR_Home_Pos = 0;
 int16_t Left_Arm_Motor_Count=0, Right_Arm_Motor_Count=0, Right_Arm_Motor_Value=0, Left_Arm_Motor_Value=0, Pitch_Arm_Motor_Count=0, Pitch_Arm_Motor_Value=0;
 float L_Arm_Speed=0, R_Arm_Speed=0, L_Arm_Speed_Temp=0, R_Arm_Speed_Temp=0, Pitch_Arm_Speed_Temp=0, Tri_Arm_Speed=0;double Pitch_Arm_Speed=0;
 _Bool Front_Left_Bush = 0, Front_Right_Bush = 0, Front_Bushes_Sensed = 0, First_Sense=0 , Rear_Bush=0;
@@ -971,24 +971,24 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 		
 		if(OPERATION_MONITOR_FLAG==NULL)
 		{
-//			Flap_Sensing();
+			Flap_Sensing();
 			
 			Drive_Wheel_Controls_Vel_Based();
 																							//Left_Frame_Controls();
 			New_Steering_Controls();
 																							//Frame_Controls_Sensor_BLE();
 																							//All_Macro_Sensing();
-			Frame_Controls();
+//			Frame_Controls();
 			Dynamic_Width_Adjustment();
 			Shearing_Motors();
-//			Macro();
-			Pitch_Arm_Control_IMU();
+			Macro();
+//			Pitch_Arm_Control_IMU();
 			
 			
 
 
 
-//			Frame_Manual_Controls();
+			Frame_Manual_Controls();
 			
 //	if (Cont != Cont_temp)
 //	{
@@ -5519,16 +5519,16 @@ void Frame_Manual_Controls(void)
         switch (Joystick)
         {
             case 1:
-                vert_speed = 10;
+                vert_speed = 20;
                 break;
             case 2:
-                vert_speed = -10;
+                vert_speed = -20;
                 break;
             case 3:
-                cont_speed = 10;
+                cont_speed = 20;
                 break;
             case 4:
-                cont_speed = -10;
+                cont_speed = -20;
                 break;
             case 0:
             default:
