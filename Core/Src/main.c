@@ -3825,7 +3825,9 @@ void Shearing_Motors (void)
 {
 		if ( Shearing_Temp != Shearing )
 	{
-		if ( Shearing == 2 )
+		if 
+//			(( Shearing == 2 ) || (Mode == 3 ))
+			( Shearing == 3 )
 		{
 //			if (HAL_GetTick() - Shearing_Tick >= 1500)
 //			{
@@ -4239,7 +4241,7 @@ void New_Drive_Controls_V2(void)
 
 void Drive_Wheel_Controls_Vel_Based(void)
 {
-	if (Mode == 1)
+	if ((Mode >= 1) && (Speed != 5))
 	{
 	Input_Vel = Speed * 17.5 ; //35
 	Input_Vel = Input_Vel > 60 ? 60 : Input_Vel;
@@ -5468,7 +5470,7 @@ float Float16_To_Decimal(uint16_t float16)
 
 void Macro()
 {
-	if (Mode == 2)
+	if ((Shearing == 1 ) && (Mode == 2) && (Speed == 5))
 	{
 		if (Joystick != Joystick_Temp)
 		{
@@ -5512,7 +5514,7 @@ void Frame_Manual_Controls(void)
     int vert_speed = 0;
     int cont_speed = 0;
 
-    if (Mode == 3)
+    if (( Shearing == 1) && (Mode == 3) && (Speed == 5))
     {
         zero_command_count = 0;  // Reset latch on manual mode
 
@@ -5589,7 +5591,9 @@ void Flap_Sensing(void)
     }
 
     /* -- 2. Only run in shearing mode 3, macro mode 2 -- */
-    if ((Shearing == 3) && (Mode == 2))
+    if 
+//			((Shearing == 3) || (Mode == 3))
+ 			((Shearing >= 2) && (Mode == 3))
     {
         if (Front_Left_Bush)
         {
