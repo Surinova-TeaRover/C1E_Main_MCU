@@ -767,9 +767,9 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan2)
 	{
 		case (IMU_SHEAR) : Shear_Roll = ((int16_t)(RxData2[1]<<8 | RxData2[0]))/16.0;	Shear_Pitch = ((int16_t)(RxData2[3]<<8 | RxData2[2]))/16.0;    Node_Id[27]++; break;
 		
-		case (FL_FLAP) : 	FL_Raw = CAN_SPI_READ(RxData2);      FL_Angle = New_Sensor_Pos (FL_Raw, FL_Home_Pos); 	Update_Array(Flap_Data_Array, ARRAY_SIZE, FL_Angle);				Node_Id[28]++; break;
+		case (FL_FLAP) : 	FL_Raw = CAN_SPI_READ(RxData2);      FL_Angle = New_Sensor_Pos (FL_Raw, FL_Home_Pos); 	Update_Array(Flap_Data_Array, ARRAY_SIZE, FL_Angle);				Node_Id[29]++; break;
 		
-		case (FR_FLAP) : 	FR_Raw = CAN_SPI_READ(RxData2);      FR_Angle = New_Sensor_Pos (FR_Raw, FR_Home_Pos);		Update_Array(Flap_Data_Right, ARRAY_SIZE, FR_Angle);     	Node_Id[29]++; break;
+		case (FR_FLAP) : 	FR_Raw = CAN_SPI_READ(RxData2);      FR_Angle = New_Sensor_Pos (FR_Raw, FR_Home_Pos);		Update_Array(Flap_Data_Right, ARRAY_SIZE, FR_Angle);     	Node_Id[28]++; break;
 		
 		case (RL_FLAP) : 	RL_Raw = CAN_SPI_READ(RxData2);      RL_Angle = New_Sensor_Pos (RL_Raw, RL_Home_Pos);				Node_Id[30]++; break;
 		
@@ -2769,9 +2769,9 @@ void Operations_Monitor(void)
 	
 	if (HAL_GetTick() - Heartbeat_Tick >= 1500)
 	{
-		for (uint8_t i = 1; i < 17; i++)
+		for (uint8_t i = 1; i < 21; i++)
 		{
-			if (i != 5 && i != 17 && i != 14 && i!= 16)
+			if (i != 5 && i != 17 )
 			{
 				if (Node_Id[i] == Node_Id_Temp[i]) 
 				{
@@ -2781,7 +2781,7 @@ void Operations_Monitor(void)
 			}
 		}
 		
-		for (uint8_t i = 21; i < 27; i++)
+		for (uint8_t i = 21; i < 29; i++)
 		{
 
 				if (Node_Id[i] == Node_Id_Temp[i]) 
@@ -2797,9 +2797,9 @@ void Operations_Monitor(void)
 	
 	if (HAL_GetTick() - Drive_Error_Tick >= 1000)
 	{
-		for (uint8_t k = 1; k < 15; k++)
+		for (uint8_t k = 1; k < 21; k++)
 		{
-			if ((k != 5) && (k != 17) && (k != 14) &&(k != 16) )
+			if ((k != 5) && (k != 17) )
 			{
 				if (Axis_State[k] != 8)
 				{
@@ -3008,7 +3008,8 @@ void Operations_Monitor(void)
 	OPERATION_MONITOR_FLAG = Drive_Disconnected == SET  || 
 													 Sensor_Disconnected == SET || 
 													 Drive_Errored == SET || 
-													 FET_Temp_Exceeded == SET ? SET : NULL;// && FET_Temp_Exceeded == SET && Motor_Overloaded == SET && E_Stop == SET && Joystick_Disconnected == SET && Vertical_Limit_Exceeded == SET && Contour_Limit_Exceeded == SET && Pitch_Limit_Exceeded == SET && Vertical_Not_Responding == SET && Contour_Not_Responding == SET ? SET : NULL;
+													 FET_Temp_Exceeded == SET ||
+													 Joystick_Disconnected == SET ? SET : NULL;// && FET_Temp_Exceeded == SET && Motor_Overloaded == SET && E_Stop == SET && Joystick_Disconnected == SET && Vertical_Limit_Exceeded == SET && Contour_Limit_Exceeded == SET && Pitch_Limit_Exceeded == SET && Vertical_Not_Responding == SET && Contour_Not_Responding == SET ? SET : NULL;
 }
 
 void Emergency_Stop(void)
@@ -5582,17 +5583,21 @@ void Macro()
 	
 	if (Left_Macro_Speed != Left_Macro_Speed_Temp)
 	{
-		for(uint8_t i=0; i<3 ; i++) Set_Motor_Velocity(12, Left_Macro_Speed);
+		for(uint8_t i=0; i<3 ; i++) 
+		{
+			Set_Motor_Velocity(12, Left_Macro_Speed);
+			Set_Motor_Velocity(13, Right_Macro_Speed);
+		}
 		
 		Left_Macro_Speed_Temp = Left_Macro_Speed;
 	}
 	
-	if (Right_Macro_Speed != Right_Macro_Speed_Temp)
-	{
-		for(uint8_t i=0; i<3 ; i++) Set_Motor_Velocity(13, Right_Macro_Speed);
-		
-		Right_Macro_Speed_Temp = Right_Macro_Speed;
-	}
+//	if (Right_Macro_Speed != Right_Macro_Speed_Temp)
+//	{
+//		for(uint8_t i=0; i<3 ; i++) Set_Motor_Velocity(13, Right_Macro_Speed);
+//		
+//		Right_Macro_Speed_Temp = Right_Macro_Speed;
+//	}
 }
 
 void Frame_Manual_Controls(void)
@@ -5861,19 +5866,20 @@ void Flap_Sensing(void)
         for (uint8_t i = 0; i < 3; i++)
         {
             Set_Motor_Velocity(12, MLeft_Macro_Speed);
+					  Set_Motor_Velocity(13, MRight_Macro_Speed);
         }
         MLeft_Macro_Speed_Temp = MLeft_Macro_Speed;
     }
 
     /* -- 6. Apply only on change (right) -- */
-    if (MRight_Macro_Speed != MRight_Macro_Speed_Temp)
-    {
-        for (uint8_t i = 0; i < 3; i++)
-        {
-            Set_Motor_Velocity(13, MRight_Macro_Speed);
-        }
-        MRight_Macro_Speed_Temp = MRight_Macro_Speed;
-    }
+//    if (MRight_Macro_Speed != MRight_Macro_Speed_Temp)
+//    {
+//        for (uint8_t i = 0; i < 3; i++)
+//        {
+//            Set_Motor_Velocity(13, MRight_Macro_Speed);
+//        }
+//        MRight_Macro_Speed_Temp = MRight_Macro_Speed;
+//    }
 	
 	
 	
