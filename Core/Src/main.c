@@ -126,6 +126,15 @@
 	#define 			ARRAY_SIZE 					70
 	#define         PI             3.14
 	#define       ALPHA            0.1
+	/* -- Configuration Constants -- */
+#define SENSOR_OFFSET_MM        343      // Distance from sensor to cutter
+#define ROVER_SPEED_KMPH        0.5      // Rover operating speed
+#define BUFFER_SIZE             50       // Array size for sensor data storage
+#define DEBOUNCE_TIME_MS        2000     // 2 second debounce
+/* -- Calculate delay based on sensor offset and rover speed -- */
+// 0.5 kmph = 500000 mm/hour = 138.89 mm/s
+// Delay = 343mm / 138.89 mm/s = 2469 ms ˜ 2500 ms
+#define PROCESSING_DELAY_MS     2500     // Time for sensor data to reach cutter
 
 /* USER CODE END PD */
 
@@ -152,6 +161,11 @@ DMA_HandleTypeDef hdma_uart5_rx;
 /* 							BT_VARIABLES 						*/
 uint8_t BT_Rx[9], BT_Count=0, RxBuff[9];
 bool BT_State=0 ,  Prev_BT_State=0, BT_State1 = 0;
+/* -- Sensor data structure -- */
+typedef struct {
+    float angle;
+    uint32_t timestamp;
+} SensorData_t;
 /* 							BT_VARIABLES 						*/
 
 
@@ -204,13 +218,18 @@ float LFS_Filtered = 0, Prev_LFS_Filtered = 0, LRS_Filtered = 0, Prev_LRS_Filter
 
 float FL_Raw =0, FR_Raw = 0, RL_Raw = 0, RR_Raw = 0;
 float FL_Angle=0, FR_Angle=0, RL_Angle =0, RR_Angle=0, FL_Angle_Temp=0;
-uint16_t FL_Home_Pos = 563 , FR_Home_Pos = 362 , RL_Home_Pos = 0, RR_Home_Pos = 0;
+uint16_t FL_Home_Pos = 563 , FR_Home_Pos = 359 , RL_Home_Pos = 0, RR_Home_Pos = 0;
 int16_t Left_Arm_Motor_Count=0, Right_Arm_Motor_Count=0, Right_Arm_Motor_Value=0, Left_Arm_Motor_Value=0, Pitch_Arm_Motor_Count=0, Pitch_Arm_Motor_Value=0;
 float L_Arm_Speed=0, R_Arm_Speed=0, L_Arm_Speed_Temp=0, R_Arm_Speed_Temp=0, Pitch_Arm_Speed_Temp=0, Tri_Arm_Speed=0;double Pitch_Arm_Speed=0;
 _Bool Front_Left_Bush = 0, Front_Right_Bush = 0, Front_Bushes_Sensed = 0, First_Sense=0 , Rear_Bush=0;
 int Flaps_Target = 32, Flap_Error=0,Flap_Error_Right = 0,Flaps_Target_Right=60, Flap_Error_Left = 0, Flaps_Target_Left = 60;
 float Flap_Kp = 5, Pitch_Kp=2 ;
 _Bool Front_Left_Bush_Timer = 0, Front_Left_Bush_Timer_Active = 0;
+/* -- Global variables for buffering -- */
+static SensorData_t SensorBuffer[BUFFER_SIZE];
+static uint8_t BufferWriteIndex = 0;
+static uint8_t BufferReadIndex = 0;
+static uint8_t BufferCount = 0;
 
 float Macro_Speed = 0;
 /* 							SENSING_VARIABLES 						*/
@@ -305,7 +324,7 @@ float Rover_Velocity = 0.0;
 bool JOYSTICK_STATE_FLAG = NULL, AXIS_STATE_FLAG = SET, HEARTBEAT_FLAG = SET, FET_TEMP_FLAG = SET, OPERATION_MONITOR_FLAG = NULL, MOTORS_STOP_FLAG = SET;
 uint64_t Tick_Count1 = 0, Tick_Count2 = 0;
 uint8_t Node_Id_Temp[40];
-int Node = 0, fet = 0;
+int Node = 0, fet = 0 , lim = 0;
 
 
 float  LF_Error_Change=0, LF_Error_Slope=0, LF_Error_Area=0, LF_Prev_Error=0;
@@ -385,8 +404,9 @@ float Input_Velocity[20];
 float Half_Track_Width = 0, Half_Wheel_Base = 0;
 
 /////////////////////////////////////////////////////OPERATION MONITOR VARIABLES	////////////////////////////////////////
-uint64_t Heartbeat_Tick = 0, Drive_Error_Tick = 0, Fet_Temp_Tick =0, Overload_Tick = 0, Motor_Tick = 0, speed_time = 0, Joystick_Tick = 0, Vertical_Limit_Tick = 0, Contour_Limit_Tick = 0, Pitch_Limit_Tick = 0, Vertical_Tick = 0, Vert_Resp_Tick = 0, Contour_Tick = 0, Cont_Resp_Tick = 0, Pitch_Tick = 0, Pitch_Resp_Tick = 0;
-bool Drive_Disconnected = NULL, Sensor_Disconnected = NULL, Drive_Errored = NULL, FET_Temp_Exceeded = NULL, Motor_Overloaded = NULL, E_Stop = NULL, Joystick_Disconnected = NULL, Vertical_Limit_Exceeded = NULL, Contour_Limit_Exceeded = NULL, Pitch_Limit_Exceeded = NULL, EEPROM_Error = NULL, Vertical_Not_Responding = NULL, Contour_Not_Responding = NULL, Pitch_Not_Responding = NULL, Steering_Boundary_Flag = NULL;
+uint64_t Heartbeat_Tick = 0, Drive_Error_Tick = 0 , Str_Lim_Tick =0 , Fet_Temp_Tick =0, Overload_Tick = 0, Motor_Tick = 0, speed_time = 0, Joystick_Tick = 0, Vertical_Limit_Tick = 0, Contour_Limit_Tick = 0, Pitch_Limit_Tick = 0, Vertical_Tick = 0, Vert_Resp_Tick = 0, Contour_Tick = 0, Cont_Resp_Tick = 0, Pitch_Tick = 0, Pitch_Resp_Tick = 0;
+bool Drive_Disconnected = NULL, Sensor_Disconnected = NULL, Drive_Errored = NULL, Str_Lim_Exceeded = NULL , FET_Temp_Exceeded = NULL, Motor_Overloaded = NULL, E_Stop = NULL, Joystick_Disconnected = NULL, Vertical_Limit_Exceeded = NULL, Contour_Limit_Exceeded = NULL, Pitch_Limit_Exceeded = NULL, EEPROM_Error = NULL, Vertical_Not_Responding = NULL, Contour_Not_Responding = NULL, Pitch_Not_Responding = NULL, Steering_Boundary_Flag = NULL;
+float Str_Limit [12];
 float FET_Temperature[20];
 uint8_t Speed_Ref = 0;
 float Vertical_Error = 0, Contour_Error = 0, Pitch_Error = 0;
@@ -978,17 +998,17 @@ for(int i=1;i<4;i++){Read_EEPROM_Data();	HAL_Delay(50);}
 			New_Steering_Controls();
 																							//Frame_Controls_Sensor_BLE();
 																							//All_Macro_Sensing();
-//			Frame_Controls();
+			Frame_Controls();
 			Dynamic_Width_Adjustment();
 			Shearing_Motors();
 			Macro();
-//			Pitch_Arm_Control_IMU();
+			Pitch_Arm_Control_IMU();
 			
 			
 
 
 
-			Frame_Manual_Controls();
+//			Frame_Manual_Controls();
 			
 //	if (Cont != Cont_temp)
 //	{
@@ -2746,6 +2766,7 @@ void Battery_Status_Indication(void)
 void Operations_Monitor(void)
 {
 	
+	
 	if (HAL_GetTick() - Heartbeat_Tick >= 1500)
 	{
 		for (uint8_t i = 1; i < 17; i++)
@@ -2773,6 +2794,7 @@ void Operations_Monitor(void)
 		Heartbeat_Tick = HAL_GetTick();
 	}
 	
+	
 	if (HAL_GetTick() - Drive_Error_Tick >= 1000)
 	{
 		for (uint8_t k = 1; k < 15; k++)
@@ -2786,8 +2808,73 @@ void Operations_Monitor(void)
 				}
 			}
 		}
+		
 		Drive_Error_Tick = HAL_GetTick();
 	}
+	
+/*//////if (HAL_GetTick() - Str_Lim_Tick >= 100)
+	
+	
+//////{
+//////    for (uint8_t j = 8; j < 12; j++)
+//////    {
+//////        Str_Lim_Exceeded = (Str_Limit[j] > 45 || Str_Limit[j] < -45) ? SET : RESET;
+//////        if (Str_Lim_Exceeded)
+//////        {
+//////            break;
+//////        }
+//////    }
+
+//////    if (LF_Steering > 45 && LF_Speed > 0)
+//////        LF_Speed = 0;
+//////    else if (LF_Steering < -45 && LF_Speed < 0)
+//////        LF_Speed = 0;
+
+//////    if (LR_Steering > 45 && LR_Speed > 0)
+//////        LR_Speed = 0;
+//////    else if (LR_Steering < -45 && LR_Speed < 0)
+//////        LR_Speed = 0;
+
+//////    if (RF_Steering > 45 && RF_Speed > 0)
+//////        RF_Speed = 0;
+//////    else if (RF_Steering < -45 && RF_Speed < 0)
+//////        RF_Speed = 0;
+
+//////    if (RR_Steering > 45 && RR_Speed > 0)
+//////        RR_Speed = 0;
+//////    else if (RR_Steering < -45 && RR_Speed < 0)
+//////        RR_Speed = 0;
+
+//////    Str_Lim_Tick = HAL_GetTick();
+//////    lim = 0;
+////////		Str_Lim_Tick = HAL_GetTick();
+//////}
+
+////if (HAL_GetTick() - Str_Lim_Tick >= 1000 )
+////{// Steering Limit Check (±45)
+////Str_Lim_Exceeded = RESET;
+
+////if (LF_Steering >= 45 || LF_Steering <= -45 ||
+////    LR_Steering >= 45 || LR_Steering <= -45 ||
+////    RF_Steering >= 45 || RF_Steering <= -45 ||
+////    RR_Steering >= 45 || RR_Steering <= -45)
+////{
+////    Str_Lim_Exceeded = SET;
+////}
+
+////if (LF_Steering > 45 && LF_Speed > 0)        LF_Speed = 0;
+////else if (LF_Steering < -45 && LF_Speed < 0)  LF_Speed = 0;
+
+////if (LR_Steering > 45 && LR_Speed > 0)        LR_Speed = 0;
+////else if (LR_Steering < -45 && LR_Speed < 0)  LR_Speed = 0;
+
+////if (RF_Steering > 45 && RF_Speed > 0)        RF_Speed = 0;
+////else if (RF_Steering < -45 && RF_Speed < 0)  RF_Speed = 0;
+
+////if (RR_Steering > 45 && RR_Speed > 0)        RR_Speed = 0;
+////else if (RR_Steering < -45 && RR_Speed < 0)  RR_Speed = 0;
+////}*/
+	
 	
 	if (HAL_GetTick() - Fet_Temp_Tick >= 1000)
 	{
@@ -3876,9 +3963,9 @@ void Shearing_Motors (void)
 //			{
 					for ( int i=0; i < 2; i++)
 					{			
-						Set_Motor_Velocity( 18 , 40 );// HAL_Delay(10); // SELECTIVE
-						Set_Motor_Velocity( 20 , 20 );// HAL_Delay(10); // MAIN PADDLE
-						Set_Motor_Velocity( 19 , 20 ); //HAL_Delay(10);	// SIDE PADDLE
+						Set_Motor_Velocity( 18 , 40 );// HAL_Delay(10); // PADDLE
+						Set_Motor_Velocity( 20 , 40 );// HAL_Delay(10); // CUTTER
+						Set_Motor_Velocity( 19 , 20 ); //HAL_Delay(10);	// SELECTIVE
 						//Set_Motor_Velocity( 20 , 20 ); 							// CUTTER
 					}
 			//}
@@ -4773,7 +4860,7 @@ void New_Steering_Controls (void)
 			case CRAB :							//	--> CRAB STEERING			
 			/*///////////////////////////////////////////////////////////////////////////////////	CRAB STEERING  - STEERING FUNCTION ///////////////////////////////////////////////////////////////////////////////////	*/
 			
-							AW_Angle = ( Pot_Angle - 90) * 0.9; 
+							AW_Angle = ( Pot_Angle - 90) * 1; 
 			
 							LF_Speed = (LF_Steering > AW_Angle -STEERING_BOUNDARY && LF_Steering < AW_Angle +STEERING_BOUNDARY ) ? 0 : ( LF_Steering < AW_Angle ) ? STEERING_HOMING_SPEED: ( LF_Steering > AW_Angle ) ? -STEERING_HOMING_SPEED : 0;		
 							LR_Speed = (LR_Steering > AW_Angle -STEERING_BOUNDARY && LR_Steering < AW_Angle +STEERING_BOUNDARY ) ? 0 : ( LR_Steering < AW_Angle ) ? STEERING_HOMING_SPEED: ( LR_Steering > AW_Angle ) ? -STEERING_HOMING_SPEED : 0;					
@@ -5565,6 +5652,151 @@ void Frame_Manual_Controls(void)
 }
 
 void Flap_Sensing(void)
+
+
+//{
+//    uint32_t CurrentTick = HAL_GetTick();
+//    float ProcessedAngle = 0;
+//    uint8_t ValidDataAvailable = 0;
+//    
+//    /* ========== STEP 1: Store current sensor reading in buffer ========== */
+//    if (BufferCount < BUFFER_SIZE)
+//    {
+//        SensorBuffer[BufferWriteIndex].angle = FR_Angle;
+//        SensorBuffer[BufferWriteIndex].timestamp = CurrentTick;
+//        
+//        BufferWriteIndex = (BufferWriteIndex + 1) % BUFFER_SIZE;
+//        BufferCount++;
+//    }
+//    else
+//    {
+//        /* Buffer full - overwrite oldest data */
+//        SensorBuffer[BufferWriteIndex].angle = FR_Angle;
+//        SensorBuffer[BufferWriteIndex].timestamp = CurrentTick;
+//        
+//        BufferWriteIndex = (BufferWriteIndex + 1) % BUFFER_SIZE;
+//        BufferReadIndex = (BufferReadIndex + 1) % BUFFER_SIZE;
+//    }
+//    
+//    /* ========== STEP 2: Retrieve delayed sensor data ========== */
+//    while (BufferCount > 0)
+//    {
+//        uint32_t DataAge = CurrentTick - SensorBuffer[BufferReadIndex].timestamp;
+//        
+//        /* Check if data has aged enough (reached cutter position) */
+//        if (DataAge >= PROCESSING_DELAY_MS)
+//        {
+//            ProcessedAngle = SensorBuffer[BufferReadIndex].angle;
+//            ValidDataAvailable = 1;
+//            
+//            /* Remove processed data from buffer */
+//            BufferReadIndex = (BufferReadIndex + 1) % BUFFER_SIZE;
+//            BufferCount--;
+//            break;  // Process one sample per cycle
+//        }
+//        else
+//        {
+//            /* Data not old enough yet */
+//            break;
+//        }
+//    }
+//    
+//    /* If no valid delayed data, exit early */
+//    if (!ValidDataAvailable)
+//    {
+//        MMacro_Speed = 0;
+//        MLeft_Macro_Speed = 0;
+//        MRight_Macro_Speed = 0;
+//        return;
+//    }
+//    
+//    /* ========== STEP 3: Sensor validity flag with 2-second debounce ========== */
+//    if (ProcessedAngle > 15)
+//    {
+//        if (!Front_Left_Bush_Timer_Active)
+//        {
+//            Front_Left_Bush_Timer = CurrentTick;
+//            Front_Left_Bush_Timer_Active = 1;
+//        }
+//        
+//        /* Check if debounce time elapsed */
+//        if ((CurrentTick - Front_Left_Bush_Timer) >= DEBOUNCE_TIME_MS)
+//        {
+//            Front_Left_Bush = 1;
+//        }
+//    }
+//    else
+//    {
+//        /* Angle dropped below 15 – reset timer and flag */
+//        Front_Left_Bush = 0;
+//        Front_Left_Bush_Timer_Active = 0;
+//        Front_Left_Bush_Timer = 0;
+//    }
+//    
+//    /* ========== STEP 4: Only run in shearing mode >= 2, macro mode 3 ========== */
+//    if ((Shearing >= 2) && (Mode == 3))
+//    {
+//        if (Front_Left_Bush)
+//        {
+//            /* -- Active sensing – PID-style control -- */
+//            Flap_Error = Flaps_Target - ProcessedAngle;
+//            
+//            /* Dead-band of ±2 degrees */
+//            if (Flap_Error <= 2 && Flap_Error >= -2)
+//            {
+//                MMacro_Speed = 0;
+//            }
+//            else
+//            {
+//                MMacro_Speed = (int16_t)(Flap_Error * Flap_Kp);
+//            }
+//        }
+//        else
+//        {
+//            /* Not confirmed yet or angle <= 15 : stop motor */
+//            MMacro_Speed = 0;
+//        }
+//        
+//        /* ========== STEP 5: Clamp output ========== */
+//        if (MMacro_Speed > 60)
+//            MMacro_Speed = 60;
+//        else if (MMacro_Speed < -60)
+//            MMacro_Speed = -60;
+//    }
+//    else
+//    {
+//        MMacro_Speed = 0;
+//    }
+//    
+//    /* ========== STEP 6: Mirror speed to both sides ========== */
+//    MLeft_Macro_Speed = MMacro_Speed;
+//    MRight_Macro_Speed = MMacro_Speed;
+//    
+//    /* ========== STEP 7: Apply only on change (left) ========== */
+//    if (MLeft_Macro_Speed != MLeft_Macro_Speed_Temp)
+//    {
+//        for (uint8_t i = 0; i < 3; i++)
+//        {
+//            Set_Motor_Velocity(12, MLeft_Macro_Speed);
+//        }
+//        MLeft_Macro_Speed_Temp = MLeft_Macro_Speed;
+//    }
+//    
+//    /* ========== STEP 8: Apply only on change (right) ========== */
+//    if (MRight_Macro_Speed != MRight_Macro_Speed_Temp)
+//    {
+//        for (uint8_t i = 0; i < 3; i++)
+//        {
+//            Set_Motor_Velocity(13, MRight_Macro_Speed);
+//        }
+//        MRight_Macro_Speed_Temp = MRight_Macro_Speed;
+//    }
+//}
+
+
+
+
+
 {
 //	FR_Angle = -(FR_Angle);
 	
