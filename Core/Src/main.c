@@ -3965,8 +3965,8 @@ void Shearing_Motors (void)
 					for ( int i=0; i < 2; i++)
 					{			
 						Set_Motor_Velocity( 18 , 60 );// HAL_Delay(10); // PADDLE
-						Set_Motor_Velocity( 20 , 40 );// HAL_Delay(10); // CUTTER
-						Set_Motor_Velocity( 19 , 20 ); //HAL_Delay(10);	// SELECTIVE
+						Set_Motor_Velocity( 20 , 60 );// HAL_Delay(10); // CUTTER
+						Set_Motor_Velocity( 19 , 0 ); //HAL_Delay(10);	// SELECTIVE
 						//Set_Motor_Velocity( 20 , 20 ); 							// CUTTER
 					}
 			//}
