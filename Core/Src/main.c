@@ -192,7 +192,7 @@ uint8_t LFD=1,LRD=2,RFD=3,RRD=4,LVert=5, RVert=6, Contour=7, LFS=8, LRS=9, RFS=1
 /* 							IMU_VARIABLES 						*/
 
 float L_Roll=0, L_Pitch=0, R_Roll=0, R_Pitch=0;
-float Left_Roll_Pos = 1.5 - 2, Right_Roll_Pos = 0.5625, Right_Pitch_Pos = 0.4375, Left_Pitch_Pos=17.4, Left_Column_Error =0 , Left_Col_Pos = 0;
+float Left_Roll_Pos = 1.5 - 2, Right_Roll_Pos = 0.5625, Right_Pitch_Pos = 5, Left_Pitch_Pos=17.4, Left_Column_Error =0 , Left_Col_Pos = 0;
 float Right_Roll_Home_Pos = 0.5625 , Right_Pitch_Home_Pos = 0.4375 ;
 float Base_Pitch =0 , Base_Roll = 0;
 //float Left_Roll_Pos = 1.5 - 2, Right_Roll_Pos = 1.9, Right_Pitch_Pos = 4.93, Left_Pitch_Pos=17.4, Left_Column_Error =0 , Left_Col_Pos = 0;
@@ -218,11 +218,11 @@ float LFS_Filtered = 0, Prev_LFS_Filtered = 0, LRS_Filtered = 0, Prev_LRS_Filter
 
 float FL_Raw =0, FR_Raw = 0, RL_Raw = 0, RR_Raw = 0;
 float FL_Angle=0, FR_Angle=0, RL_Angle =0, RR_Angle=0, FL_Angle_Temp=0;
-uint16_t FL_Home_Pos = 563 , FR_Home_Pos = 359 , RL_Home_Pos = 0, RR_Home_Pos = 0;
+uint16_t FL_Home_Pos = 563 , FR_Home_Pos = 365 , RL_Home_Pos = 0, RR_Home_Pos = 0;
 int16_t Left_Arm_Motor_Count=0, Right_Arm_Motor_Count=0, Right_Arm_Motor_Value=0, Left_Arm_Motor_Value=0, Pitch_Arm_Motor_Count=0, Pitch_Arm_Motor_Value=0;
 float L_Arm_Speed=0, R_Arm_Speed=0, L_Arm_Speed_Temp=0, R_Arm_Speed_Temp=0, Pitch_Arm_Speed_Temp=0, Tri_Arm_Speed=0;double Pitch_Arm_Speed=0;
 _Bool Front_Left_Bush = 0, Front_Right_Bush = 0, Front_Bushes_Sensed = 0, First_Sense=0 , Rear_Bush=0;
-int Flaps_Target = 32, Flap_Error=0,Flap_Error_Right = 0,Flaps_Target_Right=60, Flap_Error_Left = 0, Flaps_Target_Left = 60;
+int Flaps_Target = 44, Flap_Error=0,Flap_Error_Right = 0,Flaps_Target_Right=60, Flap_Error_Left = 0, Flaps_Target_Left = 60;
 float Flap_Kp = 5, Pitch_Kp=2 ;
 _Bool Front_Left_Bush_Timer = 0, Front_Left_Bush_Timer_Active = 0;
 /* -- Global variables for buffering -- */
@@ -3056,7 +3056,7 @@ void Emergency_Stop(void)
 		{
 			for (uint8_t i = 1; i < 21; i++)
 			{
-				if (i != 5 && i != 17 && i != 14)
+				if (i != 5 && i != 17 )
 				{
 					while (Axis_State[i] != 8)
 					{
@@ -3964,7 +3964,7 @@ void Shearing_Motors (void)
 //			{
 					for ( int i=0; i < 2; i++)
 					{			
-						Set_Motor_Velocity( 18 , 40 );// HAL_Delay(10); // PADDLE
+						Set_Motor_Velocity( 18 , 60 );// HAL_Delay(10); // PADDLE
 						Set_Motor_Velocity( 20 , 40 );// HAL_Delay(10); // CUTTER
 						Set_Motor_Velocity( 19 , 20 ); //HAL_Delay(10);	// SELECTIVE
 						//Set_Motor_Velocity( 20 , 20 ); 							// CUTTER
