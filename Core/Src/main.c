@@ -222,7 +222,7 @@ uint16_t FL_Home_Pos = 563 , FR_Home_Pos = 365 , RL_Home_Pos = 0, RR_Home_Pos = 
 int16_t Left_Arm_Motor_Count=0, Right_Arm_Motor_Count=0, Right_Arm_Motor_Value=0, Left_Arm_Motor_Value=0, Pitch_Arm_Motor_Count=0, Pitch_Arm_Motor_Value=0;
 float L_Arm_Speed=0, R_Arm_Speed=0, L_Arm_Speed_Temp=0, R_Arm_Speed_Temp=0, Pitch_Arm_Speed_Temp=0, Tri_Arm_Speed=0;double Pitch_Arm_Speed=0;
 _Bool Front_Left_Bush = 0, Front_Right_Bush = 0, Front_Bushes_Sensed = 0, First_Sense=0 , Rear_Bush=0;
-int Flaps_Target = 44, Flap_Error=0,Flap_Error_Right = 0,Flaps_Target_Right=60, Flap_Error_Left = 0, Flaps_Target_Left = 60;
+int Flaps_Target = 50, Flap_Error=0,Flap_Error_Right = 0,Flaps_Target_Right=60, Flap_Error_Left = 0, Flaps_Target_Left = 60;
 float Flap_Kp = 5, Pitch_Kp=2 ;
 _Bool Front_Left_Bush_Timer = 0, Front_Left_Bush_Timer_Active = 0;
 /* -- Global variables for buffering -- */
@@ -3965,7 +3965,7 @@ void Shearing_Motors (void)
 					for ( int i=0; i < 2; i++)
 					{			
 						Set_Motor_Velocity( 18 , 60 );// HAL_Delay(10); // PADDLE
-						Set_Motor_Velocity( 20 , 60 );// HAL_Delay(10); // CUTTER
+						Set_Motor_Velocity( 20 , 75 );// HAL_Delay(10); // CUTTER
 						Set_Motor_Velocity( 19 , 0 ); //HAL_Delay(10);	// SELECTIVE
 						//Set_Motor_Velocity( 20 , 20 ); 							// CUTTER
 					}
